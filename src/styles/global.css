@@ -1884,7 +1884,7 @@ button:disabled {
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(5, 8, 14, 0.84);
+  background: #000000 !important; /* completely solid pitch black */
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   animation: fadeInGate 0.4s ease-out;
@@ -2096,4 +2096,139 @@ button:disabled {
     font-size: 0.82rem;
   }
 }
+
+/* ==========================================================================
+   PROJECT MEDIA PREVIEWS (Live Website, GitHub Card, Browser Frame)
+   ========================================================================== */
+.project-media-live,
+.project-media-github {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #090e17;
+  display: flex;
+  flex-direction: column;
+}
+.project-browser-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  background: #0d131f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: #94a3b8;
+  flex: none;
+}
+.project-browser-dots {
+  display: flex;
+  gap: 5px;
+}
+.project-browser-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+.project-browser-dots span:nth-child(1) { background: #ef4444; }
+.project-browser-dots span:nth-child(2) { background: #eab308; }
+.project-browser-dots span:nth-child(3) { background: #22c55e; }
+
+.project-browser-url {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.project-browser-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+.project-live-frame {
+  width: 100%;
+  flex: 1;
+  border: 0;
+  background: #fff;
+}
+.project-live-preview-wrap {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  overflow: hidden;
+  cursor: pointer;
+}
+.project-live-shot {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  transition: transform 0.3s ease;
+}
+.project-live-preview-wrap:hover .project-live-shot {
+  transform: scale(1.03);
+}
+.project-live-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 15, 25, 0.45);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.project-live-preview-wrap:hover .project-live-overlay {
+  opacity: 1;
+}
+.project-live-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: #00f5a0;
+  color: #02070e;
+  font-family: var(--font-display, sans-serif);
+  font-weight: 700;
+  font-size: 12px;
+  box-shadow: 0 4px 14px rgba(0, 245, 160, 0.4);
+}
+
+/* GitHub repo card */
+.project-gh-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #161b22;
+  color: #f0f6fc;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex: none;
+}
+.project-gh-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-gh-og {
+  width: 100%;
+  flex: 1;
+  object-fit: cover;
+}
+
 

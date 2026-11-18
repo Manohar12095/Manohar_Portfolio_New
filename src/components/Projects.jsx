@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ExternalLink, Github } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 import { cleanLink } from "../lib/url";
-import SmartImage from "./SmartImage";
+import ProjectMedia from "./ProjectMedia";
 import Tilt from "./Tilt";
 
 const STATUS = {
@@ -51,10 +51,7 @@ export default function Projects() {
           return (
             <li key={`${p.slug}-${p.title}`}>
               <Tilt className="project-card" max={6}>
-                <div className="project-media">
-                  <SmartImage src={p.cover} alt="" label={p.title} />
-                  <span className={`status status-${p.status}`}>{STATUS[p.status] || p.status}</span>
-                </div>
+                <ProjectMedia project={p} statusText={STATUS[p.status] || p.status} statusKey={p.status} />
                 <div className="project-body">
                   <h3>{p.title}</h3>
                   <p>{p.description}</p>
