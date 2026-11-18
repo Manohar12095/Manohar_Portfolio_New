@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0e17"/>
+      <stop offset="50%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#070a10"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+    <linearGradient id="badge-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Ambient background glow spheres -->
+  <circle cx="200" cy="150" r="280" fill="#38bdf8" opacity="0.08" filter="blur(80px)"/>
+  <circle cx="1000" cy="480" r="320" fill="#818cf8" opacity="0.08" filter="blur(80px)"/>
+
+  <!-- Subtle grid lines -->
+  <g stroke="rgba(255, 255, 255, 0.03)" stroke-width="1">
+    <line x1="100" y1="0" x2="100" y2="630"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="500" y1="0" x2="500" y2="630"/>
+    <line x1="700" y1="0" x2="700" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+    <line x1="1100" y1="0" x2="1100" y2="630"/>
+    <line x1="0" y1="120" x2="1200" y2="120"/>
+    <line x1="0" y1="240" x2="1200" y2="240"/>
+    <line x1="0" y1="360" x2="1200" y2="360"/>
+    <line x1="0" y1="480" x2="1200" y2="480"/>
+  </g>
+
+  <!-- Monogram Badge -->
+  <g transform="translate(100, 90)">
+    <rect width="72" height="72" rx="20" fill="url(#badge-grad)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" filter="url(#card-shadow)"/>
+    <circle cx="58" cy="18" r="4" fill="#38bdf8"/>
+    <text x="36" y="49" font-family="'Space Grotesk', -apple-system, sans-serif" font-size="32" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="-1">SM</text>
+  </g>
+
+  <!-- Tag badge -->
+  <g transform="translate(190, 108)">
+    <rect width="280" height="36" rx="18" fill="rgba(56, 189, 248, 0.1)" stroke="rgba(56, 189, 248, 0.25)" stroke-width="1"/>
+    <text x="140" y="23" font-family="'Space Grotesk', -apple-system, sans-serif" font-size="14" font-weight="600" fill="#38bdf8" text-anchor="middle" letter-spacing="0.5">MANOHAR · 3D PORTFOLIO</text>
+  </g>
+
+  <!-- Main Headline -->
+  <text x="100" y="270" font-family="'Space Grotesk', -apple-system, sans-serif" font-size="64" font-weight="800" fill="#ffffff" letter-spacing="-1.5">S. Manohar</text>
+  
+  <text x="100" y="340" font-family="'Space Grotesk', -apple-system, sans-serif" font-size="44" font-weight="700" fill="url(#glow)" letter-spacing="-1">Full-Stack &amp; Mobile Developer</text>
+
+  <!-- Subtitle -->
+  <text x="100" y="410" font-family="'Inter', -apple-system, sans-serif" font-size="22" font-weight="400" fill="#94a3b8">
+    Crafting interactive 3D web experiences, cross-platform Flutter &amp; Kotlin mobile apps,
+  </text>
+  <text x="100" y="445" font-family="'Inter', -apple-system, sans-serif" font-size="22" font-weight="400" fill="#94a3b8">
+    and AI-powered production systems.
+  </text>
+
+  <!-- Footer Pills -->
+  <g transform="translate(100, 505)">
+    <rect x="0" y="0" width="130" height="42" rx="21" fill="#151f32" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+    <text x="65" y="26" font-family="'Space Grotesk', -apple-system, sans-serif" font-size="16" font-weight="600" fill="#f1f5f9" text-anchor="middle">React &amp; 3D</text>
+
+    <rect x="145" y="0" width="145" height="42" rx="21" fill="#151f32" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+    <text x="217" y="26" font-family="'Space Grotesk', -apple-system, sans-serif" font-size="16" font-weight="600" fill="#f1f5f9" text-anchor="middle">Flutter &amp; Kotlin</text>
+
+    <rect x="305" y="0" width="135" height="42" rx="21" fill="#151f32" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+    <text x="372" y="26" font-family="'Space Grotesk', -apple-system, sans-serif" font-size="16" font-weight="600" fill="#f1f5f9" text-anchor="middle">AI Systems</text>
+
+    <rect x="455" y="0" width="120" height="42" rx="21" fill="#151f32" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+    <text x="515" y="26" font-family="'Space Grotesk', -apple-system, sans-serif" font-size="16" font-weight="600" fill="#38bdf8" text-anchor="middle">Supabase</text>
+  </g>
+</svg>
+
