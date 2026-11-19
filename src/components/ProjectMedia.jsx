@@ -127,3 +127,4 @@ export default function ProjectMedia({ project, statusText, statusKey }) {
     </div>
   );
 }
+

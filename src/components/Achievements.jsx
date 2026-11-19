@@ -1,6 +1,7 @@
-import { Award, Crown, Flag, Heart, Medal, Rocket, Star, Trophy } from "lucide-react";
+import { Award, Crown, Flag, Heart, Medal, Rocket, Star, Trophy, Image as ImageIcon } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 import Reels from "./Reels";
+import SmartImage from "./SmartImage";
 
 export const ACH_ICONS = { trophy: Trophy, medal: Medal, award: Award, star: Star, crown: Crown, flag: Flag, rocket: Rocket, heart: Heart };
 
@@ -21,14 +22,24 @@ export default function Achievements() {
         {achievements.list.map((a, i) => {
           const Icon = ACH_ICONS[a.icon] || Trophy;
           return (
-            <li key={i}>
+            <li key={i} className={a.image ? "has-image" : ""}>
               <span className="ach-icon">
                 <Icon size={22} strokeWidth={1.8} />
               </span>
-              <div>
+              <div className="ach-content">
                 <h3>{a.title}</h3>
                 <p className="ach-meta">{a.meta}</p>
                 <p>{a.text}</p>
+                {a.image && (
+                  <div className="ach-media">
+                    <a href={a.image} target="_blank" rel="noopener noreferrer" className="ach-photo-link" title="View certificate / photo">
+                      <SmartImage src={a.image} alt={a.title} className="ach-thumb" />
+                      <span className="ach-photo-badge">
+                        <ImageIcon size={14} /> View Certificate
+                      </span>
+                    </a>
+                  </div>
+                )}
               </div>
             </li>
           );

@@ -29,7 +29,8 @@ export const site = {
 
 export const socials = {
   github: "https://github.com/Manohar12095",
-  linkedin: "https://www.linkedin.com/in/YOUR_LINKEDIN_ID", // ✎ placeholder
+  linkedin: "https://www.linkedin.com/in/manohar-sudhakar-916a69353/",
+  whatsapp: "https://wa.me/916369036210",
   instagram: "", // ✎ optional
   youtube: "", // ✎ optional
 };
@@ -1250,12 +1251,14 @@ export const contact = {
   heading: "Let's talk",
   intro:
     "Have a project, an internship or a collaboration in mind? Send a message and I will reply as soon as I can.",
-  email: "YOUR_EMAIL@example.com", // ✎ replace
+  email: "manoharorignal@gmail.com",
+  secondaryEmail: "manoharorignal@outlook.com",
+  whatsapp: "+91 6369036210",
+  whatsappLink: "https://wa.me/916369036210",
   location: "Madurai, Tamil Nadu, India",
-  /* Optional: paste a Formspree / Web3Forms endpoint so the form sends without
-     opening the visitor's email app. Leave "" to use a mailto: link instead.
-     Example: "https://formspree.io/f/abcdwxyz"                              */
-  formEndpoint: "",
+  /* FormSubmit AJAX endpoint: delivers messages straight to manoharorignal@gmail.com.
+     Can also be customized to Web3Forms or Formspree in Admin → Contact. */
+  formEndpoint: "https://formsubmit.co/ajax/manoharorignal@gmail.com",
 };
 
 /* ------------------------- SECTION ORDER & VISIBILITY --------------------- */

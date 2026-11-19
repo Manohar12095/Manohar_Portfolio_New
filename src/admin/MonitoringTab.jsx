@@ -8,7 +8,9 @@ import {
   Globe,
   HardDrive,
   Laptop,
+  Mail,
   Maximize2,
+  MessageSquare,
   Monitor,
   RefreshCw,
   Search,
@@ -51,6 +53,7 @@ function timeAgo(iso) {
 export default function MonitoringTab() {
   const { content } = useContent();
   const [telemetry, setTelemetry] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -68,24 +71,36 @@ export default function MonitoringTab() {
     }
     const t0 = performance.now();
     try {
-      const { data, error } = await supabase
-        .from("visitor_telemetry")
-        .select("*")
-        .order("login_time", { ascending: false })
-        .limit(100);
+      const [{ data: telemData, error: telemErr }, { data: msgData }] = await Promise.all([
+        supabase.from("visitor_telemetry").select("*").order("login_time", { ascending: false }).limit(100),
+        supabase.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(50),
+      ]);
 
       const latency = Math.round(performance.now() - t0);
-      if (error) {
-        setDbHealth({ state: "error", latencyMs: latency, error: error.message });
+      if (telemErr) {
+        setDbHealth({ state: "error", latencyMs: latency, error: telemErr.message });
       } else {
-        setTelemetry(data || []);
+        setTelemetry(telemData || []);
         setDbHealth({ state: "connected", latencyMs: latency });
+      }
+      if (msgData) {
+        setMessages(msgData);
       }
     } catch (err) {
       setDbHealth({ state: "error", latencyMs: 0, error: err.message });
     } finally {
       setLoading(false);
       setLastUpdated(new Date());
+    }
+  };
+
+  const deleteMessage = async (id) => {
+    if (!supabase || !window.confirm("Delete this message?")) return;
+    try {
+      await supabase.from("contact_messages").delete().eq("id", id);
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      alert("Could not delete message: " + err.message);
     }
   };
 
@@ -267,6 +282,71 @@ export default function MonitoringTab() {
             {stats.total > 0 ? Math.round((stats.mobile / stats.total) * 100) : 0}% Mobile
           </span>
         </div>
+      </div>
+
+      {/* Direct Contact Inquiries Block */}
+      <div className="adm-block">
+        <div className="adm-mon-section-head">
+          <div>
+            <h3 className="adm-block-title" style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+              <Mail size={18} /> Direct Contact Form Inquiries ({messages.length})
+            </h3>
+            <p className="adm-help" style={{ margin: "4px 0 0" }}>
+              Messages submitted through your portfolio contact form, delivered to your email and backed up permanently here.
+            </p>
+          </div>
+        </div>
+
+        {messages.length === 0 ? (
+          <div className="adm-mon-empty" style={{ padding: "30px 20px" }}>
+            <Mail size={28} />
+            <p>No messages received yet. When visitors send a message from the contact form, it appears here and arrives at your Gmail.</p>
+          </div>
+        ) : (
+          <div className="adm-mon-table-wrap">
+            <table className="adm-mon-table">
+              <thead>
+                <tr>
+                  <th>Sender</th>
+                  <th>Email</th>
+                  <th>Message</th>
+                  <th>Received</th>
+                  <th style={{ width: 60, textAlign: "right" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {messages.map((m) => (
+                  <tr key={m.id}>
+                    <td>
+                      <strong>{m.name}</strong>
+                    </td>
+                    <td>
+                      <a href={`mailto:${m.email}`} style={{ color: "var(--accent)", textDecoration: "underline" }}>
+                        {m.email}
+                      </a>
+                    </td>
+                    <td style={{ maxWidth: 360, whiteSpace: "normal", wordBreak: "break-word" }}>
+                      {m.message}
+                    </td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <span title={new Date(m.created_at).toLocaleString()}>{timeAgo(m.created_at)}</span>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="adm-mon-btn-icon"
+                        onClick={() => deleteMessage(m.id)}
+                        title="Delete message"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Visitor Logs Section */}

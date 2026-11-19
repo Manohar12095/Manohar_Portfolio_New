@@ -43,8 +43,9 @@ export const TABS = [
         title: "Social links",
         path: ["socials"],
         fields: [
-          url("github", "GitHub"),
+          url("whatsapp", "WhatsApp (chat link)", { help: "e.g. https://wa.me/916369036210" }),
           url("linkedin", "LinkedIn"),
+          url("github", "GitHub"),
           url("instagram", "Instagram", { help: "Leave empty to hide the icon." }),
           url("youtube", "YouTube", { help: "Leave empty to hide the icon." }),
         ],
@@ -277,7 +278,7 @@ export const TABS = [
     id: "achievements",
     label: "Achievements",
     icon: "trophy",
-    blurb: "The 3D reels carousel and the achievements list.",
+    blurb: "The 3D reels carousel (photos & videos) and the achievements list.",
     blocks: [
       { title: "Section text", path: ["achievements"], fields: sectionText },
       {
@@ -285,13 +286,24 @@ export const TABS = [
         path: ["achievements", "reels"],
         list: {
           label: "Reels",
-          addLabel: "Add reel",
+          addLabel: "Add reel / slide",
           itemTitle: (i) => i.title,
-          newItem: () => ({ title: "New reel", video: "", poster: "" }),
+          newItem: () => ({ title: "New reel", mediaType: "auto", video: "", poster: "" }),
           fields: [
             text("title", "Title"),
-            video("video", "Video", { help: "Plays (muted, looping) when this reel is in the centre. .mp4/.webm, YouTube or Google Drive." }),
-            image("poster", "Poster image", { help: "Shown until the video plays, and if the video is missing." }),
+            {
+              key: "mediaType",
+              label: "Media Type",
+              type: "select",
+              options: [
+                { value: "auto", label: "Auto (Detect from image / video)" },
+                { value: "image", label: "Picture / Photo / Certificate" },
+                { value: "video", label: "Video Reel (.mp4, YouTube, Drive)" },
+              ],
+              help: "Choose whether this reel is a photo/certificate or a looping video.",
+            },
+            image("poster", "Picture / Poster image", { help: "Your photo, certificate, or video poster. Google Drive links work." }),
+            video("video", "Video URL (optional for pictures)", { help: "Plays (muted, looping) when in the centre. Leave empty if this is a photo." }),
           ],
         },
       },
@@ -303,12 +315,13 @@ export const TABS = [
           addLabel: "Add achievement",
           itemTitle: (i) => i.title,
           itemMeta: (i) => i.meta,
-          newItem: () => ({ icon: "trophy", title: "New achievement", meta: "", text: "" }),
+          newItem: () => ({ icon: "trophy", title: "New achievement", meta: "", text: "", image: "" }),
           fields: [
             { key: "icon", label: "Icon", type: "select", options: Object.keys(ACH_ICONS) },
             text("title", "Title"),
             text("meta", "Small line (event, year)"),
             area("text", "One-line description", { rows: 2 }),
+            image("image", "Certificate / Photo image (optional)", { help: "Optional certificate or photo for this achievement." }),
           ],
         },
       },
@@ -318,18 +331,21 @@ export const TABS = [
     id: "contact",
     label: "Contact",
     icon: "mail",
-    blurb: "Where messages go.",
+    blurb: "Where messages go and contact channels.",
     blocks: [
       {
-        title: "Contact",
+        title: "Contact channels & settings",
         path: ["contact"],
         fields: [
           text("heading", "Heading"),
           area("intro", "Intro", { rows: 3 }),
-          text("email", "Email address", { help: "Used for the mailto: fallback and shown on the page. Leave the YOUR_ placeholder to hide it." }),
-          text("location", "Location"),
-          url("formEndpoint", "Form endpoint (optional)", {
-            help: "Paste a Formspree or Web3Forms address so the form sends without opening the visitor’s email app.",
+          text("email", "Primary Email (Gmail)", { help: "Shown on the site and receives contact messages. e.g. manoharorignal@gmail.com" }),
+          text("secondaryEmail", "Secondary Email (Outlook)", { help: "Alternative direct email. e.g. manoharorignal@outlook.com" }),
+          text("whatsapp", "WhatsApp Display Number", { help: "e.g. +91 6369036210 or 6369036210" }),
+          url("whatsappLink", "WhatsApp Chat Link", { help: "Direct link to start WhatsApp chat, e.g. https://wa.me/916369036210" }),
+          text("location", "Location", { help: "e.g. Madurai, Tamil Nadu, India" }),
+          url("formEndpoint", "Form Submission Endpoint", {
+            help: "AJAX endpoint that receives contact form messages. By default: https://formsubmit.co/ajax/manoharorignal@gmail.com. Can also be Web3Forms or Formspree.",
           }),
         ],
       },

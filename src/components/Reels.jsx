@@ -4,19 +4,22 @@ import { parseVideo } from "../lib/url";
 import SmartImage from "./SmartImage";
 import VideoSurface from "./VideoSurface";
 
-/** One slide: shows the poster; the centre slide plays its video (file, YouTube or Drive). */
+/** One slide: shows the picture or poster; centre slide plays video if video exists. */
 function ReelMedia({ item, active }) {
   const [broken, setBroken] = useState(false);
-  const hasVideo = !!parseVideo(item.video) && !broken;
+  const isExplicitImage = item.mediaType === "image";
+  const parsedVid = !isExplicitImage && parseVideo(item.video);
+  const hasVideo = !isExplicitImage && !!parsedVid && !broken;
+  const imageSrc = item.poster || item.image;
 
   return (
     <>
-      <SmartImage src={item.poster} alt="" label={item.title} className="reel-poster" />
+      <SmartImage src={imageSrc} alt="" label={item.title} className="reel-poster" />
       {hasVideo && active && (
-        <VideoSurface src={item.video} poster={item.poster} muted loop controls title={item.title} onError={() => setBroken(true)} />
+        <VideoSurface src={item.video} poster={imageSrc} muted loop controls title={item.title} onError={() => setBroken(true)} />
       )}
-      {(!hasVideo || !active) && (
-        <span className="reel-play" aria-hidden="true">
+      {hasVideo && !active && (
+        <span className="reel-play" aria-hidden="true" title="Play video">
           <Play size={22} fill="currentColor" />
         </span>
       )}
