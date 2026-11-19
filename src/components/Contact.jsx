@@ -108,10 +108,25 @@ export default function Contact() {
             email: from,
             message,
             _subject: `New portfolio inquiry from ${name}`,
+            _captcha: "false",
+            _template: "table",
           }),
         });
 
-        if (!res.ok) throw new Error("bad response");
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || (data && (data.success === false || data.success === "false"))) {
+          if (data && data.message && data.message.toLowerCase().includes("activation")) {
+            formEl.reset();
+            setStatus({
+              state: "ok",
+              msg: `FormSubmit sent a 1-time activation email to ${primaryEmail}. Please click 'Activate Form' in your inbox or spam folder to complete setup!`,
+            });
+            return;
+          }
+          throw new Error(data?.message || "Delivery failed");
+        }
+
         formEl.reset();
         setStatus({
           state: "ok",
