@@ -2,7 +2,7 @@
 
 The admin page can list, upload and use the files in **one** Google Drive folder:
 
-`https://drive.google.com/drive/folders/1C5igMVCHo-VL2wOEc0RPNtWpPyTivOiT`
+`https://drive.google.com/drive/folders/1KLLthG4EwlShN6BKkoQbbLr5zvl2oKMS`
 
 Only the links are saved in your portfolio content. The files stay in Drive.
 

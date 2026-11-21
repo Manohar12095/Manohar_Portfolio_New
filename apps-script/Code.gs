@@ -28,7 +28,7 @@
 
 // The Drive folder everything is read from and written to. This is the ID in the folder's link:
 // https://drive.google.com/drive/folders/<THIS PART>
-var FOLDER_ID = "1C5igMVCHo-VL2wOEc0RPNtWpPyTivOiT";
+var FOLDER_ID = "1KLLthG4EwlShN6BKkoQbbLr5zvl2oKMS";
 
 // Upload limits. Apps Script receives uploads as text (base64), which is about a third bigger than the file,
 // so keep this modest. Larger videos: upload them in Drive itself, then pick them in the admin.

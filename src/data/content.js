@@ -23,7 +23,7 @@ export const site = {
   monogram: "SM",
   role: "Full-Stack & Mobile Developer",
   url: "https://manohar-portfolio-gray.vercel.app",
-  resumeUrl: "/resume/Manohar_Resume.pdf", // ✎ replace the file in /public/resume/
+  resumeUrl: "https://drive.google.com/file/d/14OBIbKjybXi0im66UpP8cIiG8ogWRyMO/view?usp=sharing",
   footerNote: "Designed and built by S. Manohar.",
 };
 
@@ -41,10 +41,10 @@ export const hero = {
   titleLines: ["I build software", "with real depth."], // 2nd line gets the blue gradient
   intro:
     "I'm S. Manohar, a third-year Computer Science Engineering student in Madurai. I build full-stack web apps, Flutter and Kotlin mobile apps, and AI-powered tools.",
-  photo: "/images/profile.jpg", // ✎ portrait photo, about 1200×1500 (4:5)
-  video: "/videos/intro.webm", // ✎ plays inside the photo when visitors press ▶. mp4/webm link, YouTube or Google Drive link. Leave "" to hide the button.
+  photo: "https://drive.google.com/file/d/1fWnkP6jD9UjDpT_j31OX-mVbpHrYFBn2/view?usp=sharing",
+  video: "https://drive.google.com/file/d/1VX4DvumzzYLSqiApG0p9tSIeraq0raS_/view?usp=sharing",
   photoCaptionName: "S. Manohar",
-  status: "[Open to internships & collaborations]", // ✎ edit or delete
+  status: "Open to internships & collaborations",
   chips: ["Full-stack web", "Flutter & Kotlin", "AI tooling"],
   floatingTags: ["React", "Flutter", "Kotlin"], // small 3D badges floating on the photo card
 };
@@ -101,7 +101,7 @@ export const journey = {
       slug: "extra-curricular",
       title: "Extra-Curricular Activities",
       summary: "Dance, MC, tug of war, leadership programmes, yoga and more.",
-      cover: "",
+      cover: "https://drive.google.com/file/d/1JcHUuP15FbYWe6_vM_9JNz9_u0GSpvv4/view?usp=sharing",
       intro: "",
       gallery: [],
       entries: [
@@ -219,7 +219,7 @@ export const journey = {
       slug: "internship",
       title: "Internship",
       summary: "Panith Innovations and a Flutter internship at Gateway Solutions.",
-      cover: "",
+      cover: "https://drive.google.com/file/d/1vpItLEtVaBsdkZXZu_y0huVZVdNR0jGc/view?usp=sharing",
       intro: "",
       gallery: [],
       entries: [
@@ -241,7 +241,7 @@ export const journey = {
       slug: "academy",
       title: "Academy",
       summary: "Python, Java, web design, value-added and NIELIT courses.",
-      cover: "",
+      cover: "https://drive.google.com/file/d/16URHdliWG4z6MGH32P_2pwtgrQCi7KXX/view?usp=sharing",
       intro: "",
       gallery: [],
       entries: [
@@ -311,7 +311,7 @@ export const journey = {
       slug: "workshops",
       title: "Workshops",
       summary: "IIT Chennai, GitHub, blockchain and Python & NLP workshops.",
-      cover: "",
+      cover: "https://drive.google.com/file/d/1AmW8LM5DG3ymK6CrPHqsjPPUS0ORBgBV/view?usp=sharing",
       intro: "",
       gallery: [],
       entries: [
@@ -357,7 +357,7 @@ export const journey = {
       slug: "ncc",
       title: "NCC",
       summary: "Camps, the B certificate, a drill competition win and rifle firing.",
-      cover: "",
+      cover: "https://drive.google.com/file/d/1mb2nb3LeX-c6om4sGZMwRa-AAY_Enl9E/view?usp=sharing",
       intro: "",
       gallery: [],
       entries: [
@@ -433,7 +433,7 @@ export const journey = {
       slug: "sports",
       title: "Sports",
       summary: "Marathons, relays, running races, skating and handball.",
-      cover: "",
+      cover: "https://drive.google.com/file/d/1SSUQPC9l1ApxDxGuiIe9KVxh9hYRemMh/view?usp=sharing",
       intro: "",
       gallery: [],
       entries: [
@@ -533,7 +533,7 @@ export const journey = {
       slug: "social-activities",
       title: "Social Activities",
       summary: "Anti-ragging club, pledges, crowd-control duty and NCC volunteering.",
-      cover: "",
+      cover: "https://drive.google.com/file/d/1sPBkTGTWwKmz_dKejUO9NuN42zwfDiXV/view?usp=sharing",
       intro: "",
       gallery: [],
       entries: [
@@ -639,7 +639,7 @@ export const journey = {
       slug: "projects",
       title: "Projects",
       summary: "Hackathons, ML projects, my first app and the sites I built.",
-      cover: "",
+      cover: "https://drive.google.com/file/d/1pkEHg-eHoSyH1fxZ8uRY2DxtqO0ME4Bk/view?usp=sharing",
       intro: "",
       gallery: [],
       entries: [
@@ -709,7 +709,7 @@ export const journey = {
       slug: "technical-activities",
       title: "Technical Activities",
       summary: "Symposiums, hackathons, photography and an international conference.",
-      cover: "",
+      cover: "https://drive.google.com/file/d/1YFvBwUb1-BaqLCysWlTGfXeF35kEjown/view?usp=sharing",
       intro: "",
       gallery: [],
       entries: [
@@ -1180,29 +1180,34 @@ export const achievements = {
      /public/images/reels. If a video is missing, the poster/placeholder shows. */
   reels: [
     {
-      title: "NCC drill competition win",
-      video: "/videos/reel-ncc-drill.mp4",
-      poster: "/images/reels/ncc-drill.jpg",
+      title: "Manohar Video Reel",
+      mediaType: "video",
+      video: "https://drive.google.com/file/d/1VX4DvumzzYLSqiApG0p9tSIeraq0raS_/view?usp=sharing",
+      poster: "https://drive.google.com/file/d/1fWnkP6jD9UjDpT_j31OX-mVbpHrYFBn2/view?usp=sharing",
     },
     {
-      title: "ICHE-2026 idea presentation",
-      video: "/videos/reel-iche.mp4",
-      poster: "/images/reels/iche.jpg",
+      title: "ICHE-2026 Idea Presentation (2nd Prize)",
+      mediaType: "image",
+      video: "",
+      poster: "https://drive.google.com/file/d/1YFvBwUb1-BaqLCysWlTGfXeF35kEjown/view?usp=sharing",
     },
     {
-      title: "[Hackathon highlights]",
-      video: "/videos/reel-hackathon.mp4",
-      poster: "/images/reels/hackathon.jpg",
+      title: "NCC Drill & Camp Achievements",
+      mediaType: "image",
+      video: "",
+      poster: "https://drive.google.com/file/d/1mb2nb3LeX-c6om4sGZMwRa-AAY_Enl9E/view?usp=sharing",
     },
     {
-      title: "[Marathon finish]",
-      video: "/videos/reel-marathon.mp4",
-      poster: "/images/reels/marathon.jpg",
+      title: "Sports & Marathon Finishes",
+      mediaType: "image",
+      video: "",
+      poster: "https://drive.google.com/file/d/1SSUQPC9l1ApxDxGuiIe9KVxh9hYRemMh/view?usp=sharing",
     },
     {
-      title: "[Internship moments]",
-      video: "/videos/reel-internship.mp4",
-      poster: "/images/reels/internship.jpg",
+      title: "Academic & Technical Excellence",
+      mediaType: "image",
+      video: "",
+      poster: "https://drive.google.com/file/d/16URHdliWG4z6MGH32P_2pwtgrQCi7KXX/view?usp=sharing",
     },
   ],
   /* icon: "trophy" | "medal" | "award" | "star"                              */
