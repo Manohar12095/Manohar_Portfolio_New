@@ -8,9 +8,9 @@ import { createSupabaseAdapter } from "./data/adapters/supabase";
 import "./styles/global.css";
 
 // --- Supabase database adapter (see docs/DATABASE.md) ---
-// When both env vars are set, the site saves to Supabase instead of localStorage.
-const supaUrl = import.meta.env.VITE_SUPABASE_URL;
-const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Connects to Supabase with env vars or defaults to public project credentials.
+const supaUrl = import.meta.env.VITE_SUPABASE_URL || "https://sqbrczfojykfhfugbisr.supabase.co";
+const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_2sr3UUxFtn5ypkr8tCHWpA_Oxr6FMdl";
 if (supaUrl && supaKey) {
   setAdapter(createSupabaseAdapter({ url: supaUrl, anonKey: supaKey }));
 }
