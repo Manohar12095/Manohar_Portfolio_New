@@ -93,3 +93,4 @@ export default function CertificateCard({ certificate, onOpenLightbox, onRecordV
     </div>
   );
 }
+
