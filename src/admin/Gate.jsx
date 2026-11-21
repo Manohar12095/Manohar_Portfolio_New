@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Lock, LogIn, ShieldAlert } from "lucide-react";
 import { MIN_LENGTH, hasPasscode, lockedSeconds, setPasscode, startSession, verifyPasscode } from "./auth";
 import { getAdapter } from "../data/store";
+import { recordSecurityAlert } from "../lib/telemetry";
 
 /** Sets the first passcode, or asks for it on later visits. Calls onUnlock() when done.
     When a database adapter with signIn is connected, adds an email/password step after the passcode. */
@@ -66,8 +67,18 @@ export default function Gate({ onUnlock }) {
         } else if (r.wait) {
           setWait(r.wait);
           setError("Too many wrong attempts.");
+          recordSecurityAlert({
+            event_type: "ADMIN_LOCKOUT",
+            severity: "critical",
+            details: "Exceeded max passcode attempts; admin gate locked",
+          });
         } else {
           setError(r.left > 0 ? `Wrong passcode. ${r.left} ${r.left === 1 ? "try" : "tries"} left before a short lock.` : "Wrong passcode.");
+          recordSecurityAlert({
+            event_type: "WRONG_ADMIN_PASSCODE",
+            severity: "critical",
+            details: `Failed passcode attempt (${r.left} tries remaining)`,
+          });
         }
       }
     } catch (err) {
@@ -89,6 +100,11 @@ export default function Gate({ onUnlock }) {
       onUnlock();
     } catch (err) {
       setError(err.message || "Sign in failed. Check your email and password.");
+      recordSecurityAlert({
+        event_type: "WRONG_ADMIN_PASSWORD",
+        severity: "critical",
+        details: `Database sign-in failed for email: ${email} (${err.message})`,
+      });
     } finally {
       setBusy(false);
       setPassword("");

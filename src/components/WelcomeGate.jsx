@@ -3,27 +3,18 @@ import { recordVisitorLogin } from "../lib/telemetry";
 
 export default function WelcomeGate({ onEnter }) {
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
       setError("Please enter your name to continue");
       return;
     }
-    setLoading(true);
     setError("");
-
-    try {
-      await recordVisitorLogin(trimmed);
-      onEnter(trimmed);
-    } catch {
-      onEnter(trimmed);
-    } finally {
-      setLoading(false);
-    }
+    recordVisitorLogin(trimmed);
+    onEnter(trimmed);
   };
 
   return (
@@ -71,7 +62,6 @@ export default function WelcomeGate({ onEnter }) {
               placeholder=""
               autoFocus
               maxLength={60}
-              disabled={loading}
             />
           </div>
 
@@ -80,9 +70,9 @@ export default function WelcomeGate({ onEnter }) {
           <button
             type="submit"
             className="welcome-gate-btn"
-            disabled={loading || !name.trim()}
+            disabled={!name.trim()}
           >
-            {loading ? "PREPARING PORTFOLIO..." : "ENTER PORTFOLIO →"}
+            ENTER PORTFOLIO →
           </button>
         </form>
       </div>

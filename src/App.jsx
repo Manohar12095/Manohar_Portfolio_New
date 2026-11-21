@@ -35,14 +35,6 @@ function ScrollManager() {
 function PublicSite() {
   const [visitorName, setVisitorName] = useState(() => getStoredVisitorName());
 
-  // Continuous session telemetry tracking
-  useEffect(() => {
-    if (visitorName) {
-      const cleanup = initTelemetryTracking();
-      return cleanup;
-    }
-  }, [visitorName]);
-
   return (
     <>
       <a className="skip" href="#main">
@@ -74,6 +66,11 @@ function PublicSite() {
 export default function App() {
   const { pathname } = useLocation();
   const { ready } = useContent();
+
+  useEffect(() => {
+    const cleanup = initTelemetryTracking();
+    return cleanup;
+  }, []);
   // with a database the saved content arrives a moment after load; browser storage is ready at once
   if (!ready) return <div className="boot" aria-busy="true" aria-label="Loading" />;
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
