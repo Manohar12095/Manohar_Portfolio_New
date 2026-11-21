@@ -8,6 +8,8 @@ import WelcomeGate from "./components/WelcomeGate";
 import EditPortfolioTrigger from "./components/EditPortfolioTrigger";
 import Home from "./pages/Home";
 import JourneyDetail from "./pages/JourneyDetail";
+import Certificates from "./pages/Certificates";
+import PersonalSpace from "./pages/PersonalSpace";
 import { prefersReducedMotion } from "./hooks/useMotion";
 import { useContent } from "./context/ContentContext";
 import { getStoredVisitorName, initTelemetryTracking } from "./lib/telemetry";
@@ -53,6 +55,8 @@ function PublicSite() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/journey/:slug" element={<JourneyDetail />} />
+          <Route path="/certificates" element={<Certificates />} />
+          <Route path="/personal" element={<PersonalSpace />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </div>

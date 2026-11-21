@@ -351,8 +351,12 @@ export const TABS = [
       },
     ],
   },
+  { id: "certificates", label: "Certificates", icon: "award", blurb: "Add, modify, view, download, and configure public/private certificate visibility.", custom: "certificates" },
+  { id: "personal", label: "Personal Space", icon: "lock", blurb: "Your private sanctuary for personal notes, media, and private credentials.", custom: "personal" },
   { id: "media", label: "Media", icon: "image", blurb: "Connect the Google Drive folder, upload photos and videos, and use them on your pages.", custom: "media" },
   { id: "themes", label: "Themes", icon: "palette", blurb: "Switch the look of the whole site, or build your own theme.", custom: "themes" },
   { id: "monitoring", label: "Monitoring & SEO", icon: "activity", blurb: "Live visitor telemetry, device stats, database health, and search engine audits.", custom: "monitoring" },
+  { id: "users", label: "Users", icon: "users", blurb: "View full visitor activity dossiers, duration, device footprints, and click streams.", custom: "users" },
+  { id: "userControl", label: "User Control", icon: "shield", blurb: "Manage administrative roles: Super User, Editor, and Viewer permissions.", custom: "userControl" },
   { id: "data", label: "Data & security", icon: "database", blurb: "Back up, restore, reset, and protect the admin.", custom: "data" },
 ];

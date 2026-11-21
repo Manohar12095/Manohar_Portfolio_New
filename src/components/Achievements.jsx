@@ -1,4 +1,5 @@
-import { Award, Crown, Flag, Heart, Medal, Rocket, Star, Trophy, Image as ImageIcon } from "lucide-react";
+import { Award, Crown, Flag, Heart, Medal, Rocket, Star, Trophy, Image as ImageIcon, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useContent } from "../context/ContentContext";
 import Reels from "./Reels";
 import SmartImage from "./SmartImage";
@@ -45,6 +46,12 @@ export default function Achievements() {
           );
         })}
       </ul>
+
+      <div className="ach-certificates-cta">
+        <Link to="/certificates" className="btn btn-outline btn-md">
+          <Award size={18} /> View All 70+ Verified Certificates & Credentials ↗
+        </Link>
+      </div>
     </section>
   );
 }

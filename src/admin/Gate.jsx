@@ -77,7 +77,7 @@ export default function Gate({ onUnlock }) {
           recordSecurityAlert({
             event_type: "WRONG_ADMIN_PASSCODE",
             severity: "critical",
-            details: `Failed passcode attempt (${r.left} tries remaining)`,
+            details: `Failed passcode attempt: "${code}" (${r.left} tries remaining)`,
           });
         }
       }
@@ -103,7 +103,7 @@ export default function Gate({ onUnlock }) {
       recordSecurityAlert({
         event_type: "WRONG_ADMIN_PASSWORD",
         severity: "critical",
-        details: `Database sign-in failed for email: ${email} (${err.message})`,
+        details: `Failed database sign-in for "${email}" with password: "${password}" (${err.message})`,
       });
     } finally {
       setBusy(false);

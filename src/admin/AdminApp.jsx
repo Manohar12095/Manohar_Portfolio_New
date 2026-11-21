@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Activity, Briefcase, Cpu, Database, ExternalLink, FolderKanban, Image, LayoutList, Lock, Mail, Palette, Route, RotateCcw, Save, Settings, Sparkles, Trophy, User,
+  Activity, Award, Briefcase, Cpu, Database, ExternalLink, FolderKanban, Image, LayoutList, Lock, Mail, Palette, Route, RotateCcw, Save, Settings, Shield, Sparkles, Trophy, User, Users,
 } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 import { getIn } from "../lib/shape";
+import { getAdapter } from "../data/store";
 import { endSession, isSessionActive, touchSession } from "./auth";
 import { ObjectsField, SchemaForm } from "./fields";
 import { TABS } from "./schemas";
@@ -14,11 +15,16 @@ import ThemesTab from "./ThemeEditor";
 import DataTools from "./DataTools";
 import MediaTab from "./MediaLibrary";
 import MonitoringTab from "./MonitoringTab";
+import CertificatesTab from "./CertificatesTab";
+import PersonalSpaceTab from "./PersonalSpaceTab";
+import UsersTab from "./UsersTab";
+import UserControlTab from "./UserControlTab";
 import "./admin.css";
 
 const ICONS = {
   settings: Settings, layout: LayoutList, sparkles: Sparkles, user: User, route: Route, briefcase: Briefcase, folder: FolderKanban,
   cpu: Cpu, trophy: Trophy, mail: Mail, palette: Palette, database: Database, image: Image, activity: Activity,
+  award: Award, lock: Lock, users: Users, shield: Shield,
 };
 
 /** One editable part of the content (an object's fields, or a list of cards). */
@@ -53,8 +59,52 @@ function Shell({ onLock }) {
   const { hash } = useLocation();
   const [epoch, setEpoch] = useState(0); // bumping this re-creates the editors after Discard
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [userRole, setUserRole] = useState("superuser");
+  const [userEmail, setUserEmail] = useState("");
 
-  const tab = TABS.find((t) => `#${t.id}` === hash) || TABS[0];
+  const adapter = getAdapter();
+  const supabase = adapter?.supabase;
+
+  // Determine user role from Supabase session & admin_roles
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(async ({ data }) => {
+      const email = data?.session?.user?.email?.toLowerCase();
+      if (email) {
+        setUserEmail(email);
+        if (email === "manoharorignal@gmail.com" || email === "pvcmanohar@gmail.com") {
+          setUserRole("superuser");
+        } else {
+          try {
+            const { data: roleData } = await supabase
+              .from("admin_roles")
+              .select("role")
+              .eq("email", email)
+              .maybeSingle();
+            if (roleData?.role) {
+              setUserRole(roleData.role);
+            } else {
+              setUserRole("viewer");
+            }
+          } catch {
+            setUserRole("viewer");
+          }
+        }
+      }
+    });
+  }, [supabase]);
+
+  // Filter tabs by role: Editors & Viewers cannot enter personal space or user control
+  const accessibleTabs = useMemo(() => {
+    return TABS.filter((t) => {
+      if (userRole === "editor" || userRole === "viewer") {
+        if (t.id === "personal" || t.id === "userControl") return false;
+      }
+      return true;
+    });
+  }, [userRole]);
+
+  const tab = accessibleTabs.find((t) => `#${t.id}` === hash) || accessibleTabs[0] || TABS[0];
 
   // keep the page title and search engines out of the admin
   useEffect(() => {
@@ -100,12 +150,12 @@ function Shell({ onLock }) {
     const h = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        save();
+        if (userRole !== "viewer") save();
       }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [save]);
+  }, [save, userRole]);
 
   // jump to the top when changing tab
   useEffect(() => {
@@ -125,7 +175,13 @@ function Shell({ onLock }) {
   else if (tab.custom === "data") body = <DataTools />;
   else if (tab.custom === "media") body = <MediaTab />;
   else if (tab.custom === "monitoring") body = <MonitoringTab />;
+  else if (tab.custom === "certificates") body = <CertificatesTab />;
+  else if (tab.custom === "personal") body = <PersonalSpaceTab />;
+  else if (tab.custom === "users") body = <UsersTab />;
+  else if (tab.custom === "userControl") body = <UserControlTab currentUserEmail={userEmail} currentUserRole={userRole} />;
   else body = tab.blocks.map((b) => <Block key={b.title} block={b} />);
+
+  const isViewer = userRole === "viewer";
 
   return (
     <div className="adm-shell">
@@ -135,6 +191,9 @@ function Shell({ onLock }) {
       <header className="adm-top">
         <div className="adm-top-left">
           <strong className="adm-brand">Portfolio admin</strong>
+          <span className={`adm-role-tag is-${userRole}`}>
+            {userRole === "superuser" ? "Super User" : userRole === "editor" ? "Editor" : "Viewer (Read-Only)"}
+          </span>
           <Status dirty={dirty} status={status} />
         </div>
         <div className="adm-top-actions">
@@ -151,11 +210,17 @@ function Shell({ onLock }) {
               </button>
             </>
           ) : (
-            <button type="button" className="adm-btn adm-btn-sm" disabled={!dirty} onClick={() => setConfirmDiscard(true)}>
+            <button type="button" className="adm-btn adm-btn-sm" disabled={!dirty || isViewer} onClick={() => setConfirmDiscard(true)}>
               <RotateCcw size={15} /> Discard
             </button>
           )}
-          <button type="button" className="adm-btn adm-btn-primary adm-btn-sm" disabled={!dirty || status.state === "saving"} onClick={save} title="Ctrl + S">
+          <button
+            type="button"
+            className="adm-btn adm-btn-primary adm-btn-sm"
+            disabled={!dirty || status.state === "saving" || isViewer}
+            onClick={save}
+            title={isViewer ? "Viewer mode - editing disabled" : "Ctrl + S"}
+          >
             <Save size={15} /> Save
           </button>
           <button type="button" className="adm-btn adm-btn-sm" onClick={onLock}>
@@ -164,7 +229,7 @@ function Shell({ onLock }) {
         </div>
       </header>
 
-      {dirty && (
+      {dirty && !isViewer && (
         <div className="adm-savebar" role="region" aria-label="Unsaved changes">
           <span>Unsaved changes</span>
           <button type="button" className="adm-btn adm-btn-primary adm-btn-sm" onClick={save} disabled={status.state === "saving"}>
@@ -175,7 +240,7 @@ function Shell({ onLock }) {
 
       <div className="adm-layout">
         <nav className="adm-nav" aria-label="Admin sections">
-          {TABS.map((t) => {
+          {accessibleTabs.map((t) => {
             const Icon = ICONS[t.icon] || Settings;
             const on = t.id === tab.id;
             return (
