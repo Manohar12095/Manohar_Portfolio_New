@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { 
   ArrowLeft, Search, Filter, Grid, List, Download, Share2, 
-  ExternalLink, Check, X, Award, ShieldCheck, Eye, Clock, ZoomIn
+  ExternalLink, Check, X, Award, ShieldCheck, Eye, Clock, ZoomIn,
+  ChevronLeft, ChevronRight, Layers, FileText
 } from "lucide-react";
 import { getAdapter } from "../data/store";
 import { getOrCreateSessionId, getStoredVisitorName, logVisitorAction } from "../lib/telemetry";
@@ -17,7 +18,18 @@ export default function Certificates() {
   const [sortBy, setSortBy] = useState("default");
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
   const [activeCert, setActiveCert] = useState(null);
+  const [activePageIndex, setActivePageIndex] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Active certificate pages
+  const activePages = useMemo(() => {
+    if (!activeCert) return [];
+    if (activeCert.pages && Array.isArray(activeCert.pages) && activeCert.pages.length > 0) {
+      return activeCert.pages;
+    }
+    return [activeCert.image_url].filter(Boolean);
+  }, [activeCert]);
+  const isMultiPage = activePages.length > 1;
 
   // Analytics timer for active certificate viewing
   const viewStartTime = useRef(null);
@@ -83,6 +95,7 @@ export default function Certificates() {
       recordViewDuration(activeCert.id, spent);
     }
     setActiveCert(cert);
+    setActivePageIndex(0);
     viewStartTime.current = Date.now();
     currentCertId.current = cert.id;
     logVisitorAction(`Opened Certificate: ${cert.title}`, "certificate_view", { certId: cert.id });
@@ -94,18 +107,23 @@ export default function Certificates() {
       recordViewDuration(activeCert.id, spent);
     }
     setActiveCert(null);
+    setActivePageIndex(0);
     viewStartTime.current = null;
     currentCertId.current = null;
   };
 
-  // Close lightbox on Escape key
+  // Close lightbox on Escape key & arrow keys for page flipping
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") handleCloseLightbox();
+      if (activeCert && isMultiPage) {
+        if (e.key === "ArrowLeft") setActivePageIndex((i) => Math.max(0, i - 1));
+        if (e.key === "ArrowRight") setActivePageIndex((i) => Math.min(activePages.length - 1, i + 1));
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeCert]);
+  }, [activeCert, isMultiPage, activePages.length]);
 
   // Extract distinct categories
   const categories = useMemo(() => {
@@ -290,7 +308,14 @@ export default function Certificates() {
           <div className="certs-lightbox-container" onClick={(e) => e.stopPropagation()}>
             <div className="certs-lightbox-header">
               <div className="certs-lightbox-info">
-                <span className="certs-lightbox-cat">{activeCert.category}</span>
+                <div className="certs-lightbox-meta-row">
+                  <span className="certs-lightbox-cat">{activeCert.category}</span>
+                  {isMultiPage && (
+                    <span className="certs-lightbox-page-pill">
+                      <Layers size={13} /> Page {activePageIndex + 1} of {activePages.length}
+                    </span>
+                  )}
+                </div>
                 <h2>{activeCert.title}</h2>
               </div>
               <div className="certs-lightbox-controls">
@@ -303,7 +328,7 @@ export default function Certificates() {
                   {copiedLink ? <Check size={18} color="#10b981" /> : <Share2 size={18} />}
                 </button>
                 <a
-                  href={activeCert.file_url || activeCert.image_url}
+                  href={activeCert.file_url || activePages[activePageIndex] || activeCert.image_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="certs-btn-icon"
@@ -324,13 +349,76 @@ export default function Certificates() {
             </div>
 
             <div className="certs-lightbox-media">
+              {isMultiPage && (
+                <button
+                  type="button"
+                  className="certs-lightbox-nav-btn is-prev"
+                  onClick={(e) => { e.stopPropagation(); setActivePageIndex((i) => Math.max(0, i - 1)); }}
+                  disabled={activePageIndex === 0}
+                  aria-label="Previous Page"
+                  title="Previous Page (Left Arrow)"
+                >
+                  <ChevronLeft size={28} />
+                </button>
+              )}
+
               <SmartImage
-                src={activeCert.image_url}
-                alt={activeCert.title}
+                key={activePages[activePageIndex] || activeCert.image_url}
+                src={activePages[activePageIndex] || activeCert.image_url}
+                alt={`${activeCert.title} - Page ${activePageIndex + 1}`}
                 label={activeCert.title}
                 className="certs-lightbox-img"
               />
+
+              {isMultiPage && (
+                <button
+                  type="button"
+                  className="certs-lightbox-nav-btn is-next"
+                  onClick={(e) => { e.stopPropagation(); setActivePageIndex((i) => Math.min(activePages.length - 1, i + 1)); }}
+                  disabled={activePageIndex === activePages.length - 1}
+                  aria-label="Next Page"
+                  title="Next Page (Right Arrow)"
+                >
+                  <ChevronRight size={28} />
+                </button>
+              )}
             </div>
+
+            {isMultiPage && (
+              <div className="certs-lightbox-multipage-bar">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-xs"
+                  onClick={() => setActivePageIndex((i) => Math.max(0, i - 1))}
+                  disabled={activePageIndex === 0}
+                >
+                  <ChevronLeft size={14} /> Previous Page
+                </button>
+
+                <div className="certs-lightbox-dots">
+                  {activePages.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className={`certs-dot ${idx === activePageIndex ? "is-active" : ""}`}
+                      onClick={() => setActivePageIndex(idx)}
+                      title={`Jump to Page ${idx + 1}`}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-outline btn-xs"
+                  onClick={() => setActivePageIndex((i) => Math.min(activePages.length - 1, i + 1))}
+                  disabled={activePageIndex === activePages.length - 1}
+                >
+                  Next Page <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
 
             {activeCert.description && (
               <div className="certs-lightbox-footer">

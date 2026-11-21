@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { Download, ExternalLink, Eye, Share2, Check, Lock, Globe, EyeOff } from "lucide-react";
+import { Download, ExternalLink, Eye, Share2, Check, Lock, Globe, EyeOff, Layers, FileText } from "lucide-react";
 import SmartImage from "./SmartImage";
 
 export default function CertificateCard({ certificate, onOpenLightbox, onRecordView }) {
   const [copied, setCopied] = useState(false);
+
+  const allPages = (certificate.pages && certificate.pages.length > 0)
+    ? certificate.pages
+    : [certificate.image_url].filter(Boolean);
+  const isMultiPage = allPages.length > 1;
 
   const handleCopy = (e) => {
     e.stopPropagation();
@@ -37,21 +42,28 @@ export default function CertificateCard({ certificate, onOpenLightbox, onRecordV
   };
 
   return (
-    <div className="cert-card" onClick={handleCardClick} role="button" tabIndex={0}>
+    <div className={`cert-card ${isMultiPage ? "has-multiple-pages" : ""}`} onClick={handleCardClick} role="button" tabIndex={0}>
       <div className="cert-media">
         <SmartImage
-          src={certificate.image_url}
+          src={allPages[0] || certificate.image_url}
           alt={certificate.title}
           label={certificate.title}
           className="cert-img"
         />
         <div className="cert-overlay">
           <span className="cert-view-btn">
-            <Eye size={18} /> View Full
+            <Eye size={18} /> {isMultiPage ? `View All ${allPages.length} Pages` : "View Full"}
           </span>
         </div>
         <div className="cert-top-badges">
-          <span className="cert-category-badge">{certificate.category || "General"}</span>
+          <div className="cert-badges-left">
+            <span className="cert-category-badge">{certificate.category || "General"}</span>
+            {isMultiPage && (
+              <span className="cert-badge cert-badge-multipage">
+                <Layers size={12} /> Contains {allPages.length} Pages
+              </span>
+            )}
+          </div>
           {getVisibilityBadge()}
         </div>
       </div>

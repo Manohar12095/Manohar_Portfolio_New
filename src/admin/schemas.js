@@ -32,7 +32,8 @@ export const TABS = [
         fields: [
           text("name", "Full name", { help: "Shown in the footer and used for accessibility labels." }),
           text("shortName", "Short name", { help: "Shown next to the logo, for example “Manohar”." }),
-          text("monogram", "Logo letters", { help: "Two or three letters inside the logo square." }),
+          image("logo", "Website Logo", { help: "Custom image logo for the entire website. Google Drive links work." }),
+          text("monogram", "Logo letters (fallback)", { help: "Two or three letters inside the logo square if no image logo is set." }),
           text("role", "Role"),
           url("url", "Site address"),
           url("resumeUrl", "Resume file or link", { help: "A PDF path such as /resume/Manohar_Resume.pdf, or a link to the file." }),

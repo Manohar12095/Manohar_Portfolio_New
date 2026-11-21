@@ -4,6 +4,7 @@ import { Download, Github, Menu, X } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 import { cleanLink, safeUrl } from "../lib/url";
 import { useScrollSpy, prefersReducedMotion } from "../hooks/useMotion";
+import SmartImage from "./SmartImage";
 
 export default function Nav() {
   const {
@@ -47,7 +48,13 @@ export default function Nav() {
     <header className={`nav-wrap${scrolled ? " is-scrolled" : ""}`}>
       <nav className="nav container" aria-label="Main">
         <Link to="/" className="brand" onClick={(e) => go(e, "home")} aria-label={`${site.name} — home`}>
-          <span className="brand-mark">{site.monogram}</span>
+          <span className="brand-mark">
+            {site.logo ? (
+              <SmartImage src={site.logo} alt={site.name} className="brand-logo-img" />
+            ) : (
+              site.monogram
+            )}
+          </span>
           <span className="brand-name">
             {site.shortName}
             <i>.</i>

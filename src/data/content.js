@@ -21,6 +21,7 @@ export const site = {
   name: "S. Manohar",
   shortName: "Manohar",
   monogram: "SM",
+  logo: "https://drive.google.com/file/d/1fWnkP6jD9UjDpT_j31OX-mVbpHrYFBn2/view?usp=sharing",
   role: "Full-Stack & Mobile Developer",
   url: "https://manohar-portfolio-gray.vercel.app",
   resumeUrl: "https://drive.google.com/file/d/14OBIbKjybXi0im66UpP8cIiG8ogWRyMO/view?usp=sharing",

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { 
   Award, Plus, Trash2, Edit3, Globe, Lock, EyeOff, Search, 
-  Clock, Eye, BarChart3, ExternalLink, RefreshCw, Check, X
+  Clock, Eye, BarChart3, ExternalLink, RefreshCw, Check, X, Layers, Image as ImageIcon
 } from "lucide-react";
 import { getAdapter } from "../data/store";
 import SmartImage from "../components/SmartImage";
@@ -19,13 +19,14 @@ export default function CertificatesTab() {
   const adapter = getAdapter();
   const supabase = adapter?.supabase;
 
-  // Form state
+  // Form state with multi-page support
   const [form, setForm] = useState({
     title: "",
     category: "Technical Activities",
     description: "",
     image_url: "",
     file_url: "",
+    pages: [""],
     visibility: "public",
     sort_order: 0,
     tags: ""
@@ -87,12 +88,16 @@ export default function CertificatesTab() {
     e.preventDefault();
     if (!supabase) return;
 
+    const cleanedPages = form.pages.map(p => p.trim()).filter(Boolean);
+    const primaryImage = cleanedPages[0] || form.image_url.trim();
+
     const payload = {
       title: form.title.trim(),
       category: form.category.trim(),
       description: form.description.trim(),
-      image_url: form.image_url.trim(),
+      image_url: primaryImage,
       file_url: form.file_url.trim(),
+      pages: cleanedPages.length > 0 ? cleanedPages : (primaryImage ? [primaryImage] : []),
       visibility: form.visibility,
       sort_order: Number(form.sort_order) || 0,
       tags: typeof form.tags === "string" ? form.tags.split(",").map(t => t.trim()).filter(Boolean) : form.tags,
@@ -112,7 +117,7 @@ export default function CertificatesTab() {
 
       setEditingCert(null);
       setShowAddModal(false);
-      setForm({ title: "", category: "Technical Activities", description: "", image_url: "", file_url: "", visibility: "public", sort_order: 0, tags: "" });
+      setForm({ title: "", category: "Technical Activities", description: "", image_url: "", file_url: "", pages: [""], visibility: "public", sort_order: 0, tags: "" });
       fetchData();
       setTimeout(() => setStatusMsg(""), 3000);
     } catch (err) {
@@ -143,17 +148,37 @@ export default function CertificatesTab() {
 
   const openEdit = (cert) => {
     setEditingCert(cert);
+    const pList = (cert.pages && cert.pages.length > 0)
+      ? cert.pages
+      : [cert.image_url || ""];
+
     setForm({
       title: cert.title,
       category: cert.category || "Technical Activities",
       description: cert.description || "",
       image_url: cert.image_url || "",
       file_url: cert.file_url || "",
+      pages: pList.length > 0 ? pList : [""],
       visibility: cert.visibility || "public",
       sort_order: cert.sort_order ?? 0,
       tags: (cert.tags || []).join(", ")
     });
     setShowAddModal(true);
+  };
+
+  const handlePageChange = (index, val) => {
+    const updated = [...form.pages];
+    updated[index] = val;
+    setForm({ ...form, pages: updated, image_url: updated[0] || form.image_url });
+  };
+
+  const handleAddPage = () => {
+    setForm({ ...form, pages: [...form.pages, ""] });
+  };
+
+  const handleRemovePage = (index) => {
+    const updated = form.pages.filter((_, i) => i !== index);
+    setForm({ ...form, pages: updated.length > 0 ? updated : [""], image_url: updated[0] || "" });
   };
 
   const filteredCerts = useMemo(() => {
@@ -192,6 +217,12 @@ export default function CertificatesTab() {
             <span className="adm-stat-label">Private Space Only</span>
             <span className="adm-stat-val" style={{ color: "#6366f1" }}>
               {certs.filter(c => c.visibility === "private").length}
+            </span>
+          </div>
+          <div className="adm-analytics-stat">
+            <span className="adm-stat-label">Multi-Page Certs</span>
+            <span className="adm-stat-val" style={{ color: "#8b5cf6" }}>
+              {certs.filter(c => c.pages && c.pages.length > 1).length}
             </span>
           </div>
           <div className="adm-analytics-stat">
@@ -238,14 +269,14 @@ export default function CertificatesTab() {
           </a>
           <button
             type="button"
-            className="adm-btn adm-btn-primary adm-btn-sm"
+            className="adm-btn adm-btn-primary adm-btn-sm adm-glow-btn"
             onClick={() => {
               setEditingCert(null);
-              setForm({ title: "", category: "Technical Activities", description: "", image_url: "", file_url: "", visibility: "public", sort_order: certs.length, tags: "" });
+              setForm({ title: "", category: "Technical Activities", description: "", image_url: "", file_url: "", pages: [""], visibility: "public", sort_order: certs.length, tags: "" });
               setShowAddModal(true);
             }}
           >
-            <Plus size={15} /> Add Certificate
+            <Plus size={16} /> Add Certificate
           </button>
         </div>
       </div>
@@ -271,6 +302,7 @@ export default function CertificatesTab() {
             <tr>
               <th>Preview</th>
               <th>Title & Category</th>
+              <th>Pages</th>
               <th>Visibility Control</th>
               <th>Views</th>
               <th>Sort</th>
@@ -281,6 +313,7 @@ export default function CertificatesTab() {
             {filteredCerts.map((c) => {
               const viewCount = analytics.map[c.id]?.views || 0;
               const viewSec = Math.round((analytics.map[c.id]?.totalMs || 0) / 1000);
+              const pCount = (c.pages && c.pages.length > 0) ? c.pages.length : (c.image_url ? 1 : 0);
               return (
                 <tr key={c.id}>
                   <td className="adm-td-img">
@@ -290,6 +323,15 @@ export default function CertificatesTab() {
                     <strong>{c.title}</strong>
                     <div className="adm-cert-meta-cat">{c.category || "General"}</div>
                     {c.description && <p className="adm-cert-desc-short">{c.description}</p>}
+                  </td>
+                  <td>
+                    {pCount > 1 ? (
+                      <span className="adm-page-count-badge is-multi" title="Multiple pages">
+                        <Layers size={12} /> {pCount} Pages
+                      </span>
+                    ) : (
+                      <span className="adm-page-count-badge">1 Page</span>
+                    )}
                   </td>
                   <td>
                     <div className="adm-vis-toggle-group">
@@ -330,7 +372,7 @@ export default function CertificatesTab() {
                       <button
                         type="button"
                         className="adm-btn-icon"
-                        title="Edit"
+                        title="Edit Certificate"
                         onClick={() => openEdit(c)}
                       >
                         <Edit3 size={15} />
@@ -352,98 +394,166 @@ export default function CertificatesTab() {
         </table>
       </div>
 
-      {/* Add / Edit Modal */}
+      {/* Add / Edit Modal with Multi-Page Manager */}
       {showAddModal && (
-        <div className="adm-modal-overlay">
-          <div className="adm-modal">
+        <div className="adm-modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="adm-modal adm-modal-lg" onClick={(e) => e.stopPropagation()}>
             <div className="adm-modal-head">
-              <h3>{editingCert ? "Edit Certificate" : "Add New Certificate"}</h3>
+              <div className="adm-modal-title-area">
+                <div className="adm-modal-icon-badge">
+                  <Award size={18} />
+                </div>
+                <div>
+                  <h3>{editingCert ? "Edit Certificate" : "Add New Certificate"}</h3>
+                  <p className="adm-subtle">Configure verified credentials and multiple pages</p>
+                </div>
+              </div>
               <button type="button" className="adm-modal-close" onClick={() => setShowAddModal(false)}>
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleSave} className="adm-modal-form">
-              <label>Title *</label>
-              <input
-                type="text"
-                required
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g. 1st Prize in Hackathon"
-              />
 
-              <div className="adm-form-row">
-                <div>
-                  <label>Category</label>
-                  <select
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  >
-                    <option value="Academy">Academy</option>
-                    <option value="Extra-Curricular">Extra-Curricular</option>
-                    <option value="Internship">Internship</option>
-                    <option value="NCC">NCC</option>
-                    <option value="Social Activity">Social Activity</option>
-                    <option value="Sports">Sports</option>
-                    <option value="Technical Activities">Technical Activities</option>
-                    <option value="Value Added Courses (VAC)">Value Added Courses (VAC)</option>
-                    <option value="Others">Others</option>
-                  </select>
+            <form onSubmit={handleSave} className="adm-modal-form">
+              {/* Section 1: Basic Information */}
+              <div className="adm-form-section">
+                <h4 className="adm-form-section-title">1. Certificate Information</h4>
+                <div className="adm-field">
+                  <label>Certificate Title *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    placeholder="e.g. 1st Place - Smart India Hackathon"
+                    className="adm-input-lg"
+                  />
                 </div>
-                <div>
-                  <label>Visibility</label>
-                  <select
-                    value={form.visibility}
-                    onChange={(e) => setForm({ ...form, visibility: e.target.value })}
-                  >
-                    <option value="public">Public (Shows on /certificates)</option>
-                    <option value="private">Private (Shows only in Personal Space)</option>
-                    <option value="hidden">Hidden / Turned Off</option>
-                  </select>
+
+                <div className="adm-form-row">
+                  <div className="adm-field">
+                    <label>Category</label>
+                    <select
+                      value={form.category}
+                      onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    >
+                      <option value="Academy">Academy</option>
+                      <option value="Extra-Curricular">Extra-Curricular</option>
+                      <option value="Internship">Internship</option>
+                      <option value="NCC">NCC</option>
+                      <option value="Social Activity">Social Activity</option>
+                      <option value="Sports">Sports</option>
+                      <option value="Technical Activities">Technical Activities</option>
+                      <option value="Value Added Courses (VAC)">Value Added Courses (VAC)</option>
+                      <option value="Others">Others</option>
+                    </select>
+                  </div>
+                  <div className="adm-field">
+                    <label>Visibility Setting</label>
+                    <select
+                      value={form.visibility}
+                      onChange={(e) => setForm({ ...form, visibility: e.target.value })}
+                    >
+                      <option value="public">🌐 Public (Visible on /certificates)</option>
+                      <option value="private">🔒 Private (Confidential, Personal Space only)</option>
+                      <option value="hidden">👁️‍🗨️ Hidden / Turned Off</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="adm-field">
+                  <label>Description & Notes</label>
+                  <textarea
+                    rows={2}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Details about the award, issuing university/company, rank, or year..."
+                  />
                 </div>
               </div>
 
-              <label>Image URL (Google Drive share link or direct URL)</label>
-              <input
-                type="text"
-                value={form.image_url}
-                onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                placeholder="https://drive.google.com/file/d/..."
-              />
+              {/* Section 2: Multi-Page Certificate Pages */}
+              <div className="adm-form-section">
+                <div className="adm-section-header-row">
+                  <div>
+                    <h4 className="adm-form-section-title">2. Certificate Pages & Media</h4>
+                    <p className="adm-subtle">Add single or multiple pages (Page 1, 2, 3...) using Google Drive links or direct URLs</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn-sm adm-btn-secondary"
+                    onClick={handleAddPage}
+                  >
+                    <Plus size={14} /> Add Another Page
+                  </button>
+                </div>
 
-              <label>Downloadable Document / PDF Link (Optional)</label>
-              <input
-                type="text"
-                value={form.file_url}
-                onChange={(e) => setForm({ ...form, file_url: e.target.value })}
-                placeholder="https://drive.google.com/uc?export=download&id=..."
-              />
+                <div className="adm-pages-list">
+                  {form.pages.map((pageUrl, idx) => (
+                    <div key={idx} className="adm-page-item-box">
+                      <div className="adm-page-item-header">
+                        <span className="adm-page-index-label">
+                          <Layers size={13} /> {idx === 0 ? "Page 1 (Primary Front Page)" : `Page ${idx + 1}`}
+                        </span>
+                        {form.pages.length > 1 && (
+                          <button
+                            type="button"
+                            className="adm-btn-icon adm-btn-icon-danger"
+                            onClick={() => handleRemovePage(idx)}
+                            title="Remove this page"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
 
-              <label>Description / Details</label>
-              <textarea
-                rows={3}
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Brief summary of the credential, issuing organization, grade or prize..."
-              />
+                      <div className="adm-page-input-row">
+                        <input
+                          type="text"
+                          value={pageUrl}
+                          onChange={(e) => handlePageChange(idx, e.target.value)}
+                          placeholder="https://drive.google.com/file/d/..."
+                          className="adm-page-url-input"
+                        />
+                        <div className="adm-page-thumb-preview">
+                          <SmartImage src={pageUrl} alt={`Preview Page ${idx + 1}`} className="adm-page-thumb" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
-              <div className="adm-form-row">
-                <div>
-                  <label>Tags (comma separated)</label>
+                <div className="adm-field" style={{ marginTop: "14px" }}>
+                  <label>Downloadable PDF Link (Optional for direct PDF downloads)</label>
                   <input
                     type="text"
-                    value={form.tags}
-                    onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                    placeholder="hackathon, react, 1st prize"
+                    value={form.file_url}
+                    onChange={(e) => setForm({ ...form, file_url: e.target.value })}
+                    placeholder="https://drive.google.com/uc?export=download&id=..."
                   />
                 </div>
-                <div>
-                  <label>Sort Order</label>
-                  <input
-                    type="number"
-                    value={form.sort_order}
-                    onChange={(e) => setForm({ ...form, sort_order: e.target.value })}
-                  />
+              </div>
+
+              {/* Section 3: Tags & Ordering */}
+              <div className="adm-form-section">
+                <h4 className="adm-form-section-title">3. Tags & Sorting</h4>
+                <div className="adm-form-row">
+                  <div className="adm-field">
+                    <label>Tags (comma separated)</label>
+                    <input
+                      type="text"
+                      value={form.tags}
+                      onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                      placeholder="hackathon, react, 1st prize"
+                    />
+                  </div>
+                  <div className="adm-field">
+                    <label>Display Sort Order</label>
+                    <input
+                      type="number"
+                      value={form.sort_order}
+                      onChange={(e) => setForm({ ...form, sort_order: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -451,8 +561,8 @@ export default function CertificatesTab() {
                 <button type="button" className="adm-btn" onClick={() => setShowAddModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="adm-btn adm-btn-primary">
-                  {editingCert ? "Update Certificate" : "Add Certificate"}
+                <button type="submit" className="adm-btn adm-btn-primary adm-btn-lg">
+                  {editingCert ? "Save Certificate Changes" : "Create Certificate"}
                 </button>
               </div>
             </form>

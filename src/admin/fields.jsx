@@ -321,36 +321,57 @@ export function ObjectsField({ field, value, onChange }) {
     <div className="adm-field adm-objects">
       <div className="adm-objects-head">
         <span className="adm-label">
-          {field.label} <em>{items.length}</em>
+          {field.label} <em className="adm-count-pill">{items.length}</em>
         </span>
-        <button type="button" className="adm-btn adm-btn-primary adm-btn-sm" onClick={add}>
-          <Plus size={15} /> {field.addLabel || "Add item"}
+        <button type="button" className="adm-btn adm-btn-primary adm-btn-add-item" onClick={add}>
+          <Plus size={16} strokeWidth={2.2} /> {field.addLabel || "Add item"}
         </button>
       </div>
       {field.help && <p className="adm-help">{field.help}</p>}
       {dups.length > 0 && <p className="adm-err">Two items share the same slug ({dups.join(", ")}). Each slug must be unique.</p>}
-      {items.length === 0 && <p className="adm-empty">Nothing here yet. Use “{field.addLabel || "Add item"}” to create the first one.</p>}
+      
+      {items.length === 0 && (
+        <div className="adm-empty-dropzone" onClick={add} role="button" tabIndex={0} title="Click to add new item">
+          <div className="adm-empty-drop-icon">
+            <Plus size={22} strokeWidth={2.2} />
+          </div>
+          <strong>No {field.label?.toLowerCase() || "items"} yet</strong>
+          <p>Click here or use the button above to add the first one.</p>
+        </div>
+      )}
 
       <ol className="adm-cards">
         {items.map((it, i) => {
           const isOpen = open === i;
           const title = (field.itemTitle && field.itemTitle(it)) || `Untitled ${i + 1}`;
+          const itemImg = it.cover || it.photo || it.poster || it.image;
+          const imgUrl = itemImg ? toImageUrl(itemImg) : null;
+
           return (
-            <li key={i} className={isOpen ? "is-open" : ""}>
+            <li key={i} className={`adm-card-item ${isOpen ? "is-open" : ""}`}>
               <div className="adm-card-head">
                 <button type="button" className="adm-card-toggle" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? -1 : i)}>
                   <ChevronDown size={18} className="adm-chev" />
+                  <span className="adm-item-index-badge">#{i + 1}</span>
+                  {imgUrl && (
+                    <img
+                      src={imgUrl}
+                      alt=""
+                      className="adm-item-mini-thumb"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    />
+                  )}
                   <span className="adm-card-title">{title}</span>
-                  {field.itemMeta && field.itemMeta(it) ? <small>{field.itemMeta(it)}</small> : null}
+                  {field.itemMeta && field.itemMeta(it) ? <small className="adm-item-meta-pill">{field.itemMeta(it)}</small> : null}
                 </button>
                 <div className="adm-row-actions">
-                  <button type="button" aria-label={`Move ${title} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                  <button type="button" aria-label={`Move ${title} up`} disabled={i === 0} onClick={() => move(i, -1)} title="Move Up">
                     <ArrowUp size={15} />
                   </button>
-                  <button type="button" aria-label={`Move ${title} down`} disabled={i === items.length - 1} onClick={() => move(i, 1)}>
+                  <button type="button" aria-label={`Move ${title} down`} disabled={i === items.length - 1} onClick={() => move(i, 1)} title="Move Down">
                     <ArrowDown size={15} />
                   </button>
-                  <button type="button" aria-label={`Duplicate ${title}`} onClick={() => dup(i)}>
+                  <button type="button" aria-label={`Duplicate ${title}`} onClick={() => dup(i)} title="Duplicate">
                     <Copy size={15} />
                   </button>
                   {armed === i ? (
@@ -359,11 +380,11 @@ export function ObjectsField({ field, value, onChange }) {
                         Delete
                       </button>
                       <button type="button" onClick={() => setArmed(-1)}>
-                        Keep
+                        Cancel
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="is-danger" aria-label={`Delete ${title}`} onClick={() => setArmed(i)}>
+                    <button type="button" className="is-danger" aria-label={`Delete ${title}`} onClick={() => setArmed(i)} title="Delete item">
                       <Trash2 size={15} />
                     </button>
                   )}
