@@ -19,7 +19,19 @@ export default function Certificates() {
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
   const [activeCert, setActiveCert] = useState(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
+  const [viewFormat, setViewFormat] = useState("slide"); // 'slide' | 'pdf'
   const [copiedLink, setCopiedLink] = useState(false);
+
+  function extractDriveId(url) {
+    if (!url) return null;
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+  }
+
+  const activeDriveId = useMemo(() => {
+    if (!activeCert) return null;
+    return extractDriveId(activeCert.file_url) || extractDriveId(activeCert.image_url);
+  }, [activeCert]);
 
   // Active certificate pages
   const activePages = useMemo(() => {
@@ -29,7 +41,15 @@ export default function Certificates() {
     }
     return [activeCert.image_url].filter(Boolean);
   }, [activeCert]);
-  const isMultiPage = activePages.length > 1;
+
+  const isMultiPage = useMemo(() => {
+    if (!activeCert) return false;
+    return (
+      activePages.length > 1 ||
+      activeCert.is_multipage ||
+      Boolean(activeCert.title && /marksheet|semester|sem|curriculum|transcript|page/i.test(activeCert.title))
+    );
+  }, [activeCert, activePages]);
 
   // Analytics timer for active certificate viewing
   const viewStartTime = useRef(null);
@@ -311,12 +331,30 @@ export default function Certificates() {
                 <div className="certs-lightbox-meta-row">
                   <span className="certs-lightbox-cat">{activeCert.category}</span>
                   {isMultiPage && (
-                    <span className="certs-lightbox-page-pill">
-                      <Layers size={13} /> Page {activePageIndex + 1} of {activePages.length}
+                    <span className="certs-lightbox-page-pill" style={{ background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8", border: "1px solid rgba(56, 189, 248, 0.4)", fontWeight: 700 }}>
+                      <Layers size={13} /> Contains Multiple Pages {activePages.length > 1 ? `· Page ${activePageIndex + 1} of ${activePages.length}` : ""}
                     </span>
                   )}
                 </div>
                 <h2>{activeCert.title}</h2>
+                {activeDriveId && (
+                  <div className="certs-mode-switcher" style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                    <button
+                      type="button"
+                      className={`btn btn-xs ${viewFormat === "slide" ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => setViewFormat("slide")}
+                    >
+                      🖼 Slide Image View
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-xs ${viewFormat === "pdf" ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => setViewFormat("pdf")}
+                    >
+                      📑 Interactive Multi-Page PDF Reader
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="certs-lightbox-controls">
                 <button
@@ -349,38 +387,51 @@ export default function Certificates() {
             </div>
 
             <div className="certs-lightbox-media">
-              {isMultiPage && (
-                <button
-                  type="button"
-                  className="certs-lightbox-nav-btn is-prev"
-                  onClick={(e) => { e.stopPropagation(); setActivePageIndex((i) => Math.max(0, i - 1)); }}
-                  disabled={activePageIndex === 0}
-                  aria-label="Previous Page"
-                  title="Previous Page (Left Arrow)"
-                >
-                  <ChevronLeft size={28} />
-                </button>
-              )}
+              {viewFormat === "pdf" && activeDriveId ? (
+                <div className="certs-lightbox-pdf-wrap" style={{ width: "100%", height: "70vh", position: "relative" }}>
+                  <iframe
+                    src={`https://drive.google.com/file/d/${activeDriveId}/preview`}
+                    title={activeCert.title}
+                    style={{ width: "100%", height: "100%", border: "none", borderRadius: "10px", background: "#1e293b" }}
+                    allow="autoplay"
+                  />
+                </div>
+              ) : (
+                <>
+                  {isMultiPage && (
+                    <button
+                      type="button"
+                      className="certs-lightbox-nav-btn is-prev"
+                      onClick={(e) => { e.stopPropagation(); setActivePageIndex((i) => Math.max(0, i - 1)); }}
+                      disabled={activePageIndex === 0}
+                      aria-label="Previous Page"
+                      title="Previous Page (Left Arrow)"
+                    >
+                      <ChevronLeft size={28} />
+                    </button>
+                  )}
 
-              <SmartImage
-                key={activePages[activePageIndex] || activeCert.image_url}
-                src={activePages[activePageIndex] || activeCert.image_url}
-                alt={`${activeCert.title} - Page ${activePageIndex + 1}`}
-                label={activeCert.title}
-                className="certs-lightbox-img"
-              />
+                  <SmartImage
+                    key={activePages[activePageIndex] || activeCert.image_url}
+                    src={activePages[activePageIndex] || activeCert.image_url}
+                    alt={`${activeCert.title} - Page ${activePageIndex + 1}`}
+                    label={activeCert.title}
+                    className="certs-lightbox-img"
+                  />
 
-              {isMultiPage && (
-                <button
-                  type="button"
-                  className="certs-lightbox-nav-btn is-next"
-                  onClick={(e) => { e.stopPropagation(); setActivePageIndex((i) => Math.min(activePages.length - 1, i + 1)); }}
-                  disabled={activePageIndex === activePages.length - 1}
-                  aria-label="Next Page"
-                  title="Next Page (Right Arrow)"
-                >
-                  <ChevronRight size={28} />
-                </button>
+                  {isMultiPage && (
+                    <button
+                      type="button"
+                      className="certs-lightbox-nav-btn is-next"
+                      onClick={(e) => { e.stopPropagation(); setActivePageIndex((i) => Math.min(activePages.length - 1, i + 1)); }}
+                      disabled={activePageIndex === activePages.length - 1}
+                      aria-label="Next Page"
+                      title="Next Page (Right Arrow)"
+                    >
+                      <ChevronRight size={28} />
+                    </button>
+                  )}
+                </>
               )}
             </div>
 

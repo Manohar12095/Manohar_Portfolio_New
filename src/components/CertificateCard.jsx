@@ -8,7 +8,7 @@ export default function CertificateCard({ certificate, onOpenLightbox, onRecordV
   const allPages = (certificate.pages && certificate.pages.length > 0)
     ? certificate.pages
     : [certificate.image_url].filter(Boolean);
-  const isMultiPage = allPages.length > 1;
+  const isMultiPage = allPages.length > 1 || certificate.is_multipage || Boolean(certificate.title && /marksheet|semester|sem|curriculum|transcript|page/i.test(certificate.title));
 
   const handleCopy = (e) => {
     e.stopPropagation();
@@ -59,8 +59,8 @@ export default function CertificateCard({ certificate, onOpenLightbox, onRecordV
           <div className="cert-badges-left">
             <span className="cert-category-badge">{certificate.category || "General"}</span>
             {isMultiPage && (
-              <span className="cert-badge cert-badge-multipage">
-                <Layers size={12} /> Contains {allPages.length} Pages
+              <span className="cert-badge cert-badge-multipage" title="This certificate contains multiple pages. Click to flip pages or view full document.">
+                <Layers size={12} /> Contains Multiple Pages {allPages.length > 1 ? `(${allPages.length})` : ""}
               </span>
             )}
           </div>

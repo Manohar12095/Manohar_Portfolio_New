@@ -52,7 +52,7 @@ export default function Nav() {
             {site.logo ? (
               <SmartImage src={site.logo} alt={site.name} className="brand-logo-img" />
             ) : (
-              site.monogram
+              <img src="/logo.png" alt={site.name} className="brand-logo-img" />
             )}
           </span>
           <span className="brand-name">

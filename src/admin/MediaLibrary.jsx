@@ -342,7 +342,7 @@ export function MediaPicker({ kind, onPick, onClose }) {
 
   const title = kind === "video" ? "Choose a video from Drive" : "Choose a photo from Drive";
   return createPortal(
-    <div className="adm-modal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="adm-picker-dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="adm-modal-card" role="dialog" aria-modal="true" aria-labelledby="adm-pick-title" tabIndex={-1} ref={ref} onKeyDown={onKey}>
         <header>
           <h3 id="adm-pick-title">{title}</h3>

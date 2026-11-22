@@ -124,10 +124,11 @@ export default function UsersTab() {
                 <div
                   key={u.session_id}
                   className={`adm-user-card ${isSelected ? "is-selected" : ""} ${hasCritical ? "is-critical" : hasAlert ? "is-alert" : ""}`}
+                  style={hasCritical ? { borderLeft: "4px solid #ef4444", background: "rgba(239, 68, 68, 0.06)" } : {}}
                   onClick={() => setSelectedUser(u)}
                 >
                   <div className="adm-user-card-top">
-                    <div className="adm-user-avatar">
+                    <div className="adm-user-avatar" style={hasCritical ? { background: "rgba(239, 68, 68, 0.2)", color: "#ef4444" } : {}}>
                       <User size={18} />
                     </div>
                     <div className="adm-user-name-box">
@@ -137,19 +138,19 @@ export default function UsersTab() {
                       </span>
                     </div>
                     {hasCritical && (
-                      <span className="adm-badge-critical">
-                        <ShieldAlert size={12} /> CRITICAL
+                      <span className="adm-badge-critical" style={{ background: "#ef4444", color: "#fff", fontWeight: 700, padding: "2px 8px", borderRadius: "4px", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <ShieldAlert size={12} /> RED WARNING
                       </span>
                     )}
                     {hasAlert && !hasCritical && (
-                      <span className="adm-badge-alert">
+                      <span className="adm-badge-alert" style={{ background: "#f59e0b", color: "#000", fontWeight: 700, padding: "2px 8px", borderRadius: "4px", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
                         <AlertTriangle size={12} /> ALERT
                       </span>
                     )}
                   </div>
 
                   <div className="adm-user-card-bottom">
-                    <span><Clock size={12} /> {formatDuration(u.duration_seconds)}</span>
+                    <span><Clock size={12} /> {u.duration_seconds || 0}s ({formatDuration(u.duration_seconds)})</span>
                     <span><Eye size={12} /> {(u.pages_viewed || []).length} pages</span>
                     <span><MousePointer size={12} /> {(u.actions || []).length} actions</span>
                   </div>
@@ -165,46 +166,62 @@ export default function UsersTab() {
             <div className="adm-user-detail-card">
               <div className="adm-detail-head">
                 <div>
-                  <h2>{selectedUser.visitor_name || "Anonymous Visitor"}</h2>
-                  <span className="adm-detail-session">Session: {selectedUser.session_id}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <h2 style={{ margin: 0 }}>{selectedUser.visitor_name || "Anonymous Visitor"}</h2>
+                    {selectedUser.threat_level === "critical" && (
+                      <span style={{ background: "#ef4444", color: "#fff", fontSize: "12px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px" }}>
+                        🚨 RED WARNING ACTIVATED
+                      </span>
+                    )}
+                  </div>
+                  <span className="adm-detail-session">Session ID: {selectedUser.session_id}</span>
                 </div>
                 <button type="button" className="adm-btn-icon" onClick={() => setSelectedUser(null)}>
                   <X size={18} />
                 </button>
               </div>
 
-              {/* Security Alerts (in red) */}
+              {/* Security Alerts (in prominent RED WARNING style) */}
               {userAlerts.length > 0 && (
-                <div className="adm-user-threats-box">
-                  <h4><ShieldAlert size={16} /> Security Alerts For This Visitor ({userAlerts.length}):</h4>
-                  <div className="adm-threats-list">
+                <div className="adm-user-threats-box" style={{ background: "rgba(239, 68, 68, 0.1)", border: "1.5px solid #ef4444", borderRadius: "10px", padding: "14px", margin: "14px 0" }}>
+                  <h4 style={{ color: "#ef4444", margin: "0 0 10px 0", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <ShieldAlert size={18} /> RED WARNING SECURITY ALERTS ({userAlerts.length}):
+                  </h4>
+                  <div className="adm-threats-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {userAlerts.map((alt) => (
-                      <div key={alt.id} className="adm-threat-item is-red">
-                        <div className="adm-threat-badge">{alt.event_type}</div>
-                        <p className="adm-threat-details">{alt.details}</p>
-                        <span className="adm-threat-time">
-                          {new Date(alt.created_at).toLocaleTimeString()}
-                        </span>
+                      <div key={alt.id} className="adm-threat-item is-red" style={{ background: "rgba(239, 68, 68, 0.18)", borderLeft: "4px solid #ef4444", padding: "8px 12px", borderRadius: "4px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                          <span style={{ background: "#ef4444", color: "#fff", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: 700 }}>
+                            {alt.event_type}
+                          </span>
+                          <span style={{ fontSize: "12px", color: "var(--text-soft)" }}>
+                            {new Date(alt.created_at).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: "13px", color: "#fee2e2" }}>{alt.details}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Hardware & Network Snapshot */}
+              {/* Personal, Device & Network Snapshot */}
               <div className="adm-detail-section">
-                <h4>Device & Network Snapshot</h4>
+                <h4>Personal, Device & Network Information</h4>
                 <div className="adm-detail-grid">
+                  <div><strong>Full Name:</strong> {selectedUser.visitor_name || "Anonymous Visitor"}</div>
                   <div><strong>Device Type:</strong> {selectedUser.device_type || "N/A"}</div>
-                  <div><strong>OS:</strong> {selectedUser.os || "N/A"}</div>
+                  <div><strong>Operating System:</strong> {selectedUser.os || "N/A"}</div>
                   <div><strong>Browser:</strong> {selectedUser.browser || "N/A"}</div>
-                  <div><strong>Screen:</strong> {selectedUser.screen_resolution || "N/A"}</div>
-                  <div><strong>Viewport:</strong> {selectedUser.viewport_size || "N/A"}</div>
-                  <div><strong>Network:</strong> {selectedUser.network_type || "N/A"} ({selectedUser.downlink_speed || "N/A"})</div>
-                  <div><strong>Timezone:</strong> {selectedUser.timezone || "N/A"}</div>
+                  <div><strong>Location / Timezone:</strong> {selectedUser.timezone || "N/A"}</div>
                   <div><strong>Language:</strong> {selectedUser.language || "N/A"}</div>
-                  <div><strong>Duration:</strong> {formatDuration(selectedUser.duration_seconds)}</div>
-                  <div><strong>First Seen:</strong> {new Date(selectedUser.login_time).toLocaleString()}</div>
+                  <div><strong>Network Connection:</strong> {selectedUser.network_type || "N/A"}</div>
+                  <div><strong>Downlink Speed:</strong> {selectedUser.downlink_speed || "N/A"}</div>
+                  <div><strong>Screen Resolution:</strong> {selectedUser.screen_resolution || "N/A"}</div>
+                  <div><strong>Viewport Size:</strong> {selectedUser.viewport_size || "N/A"}</div>
+                  <div><strong>Total Viewing Time:</strong> {selectedUser.duration_seconds || 0} seconds ({formatDuration(selectedUser.duration_seconds)})</div>
+                  <div><strong>Referrer Source:</strong> {selectedUser.referrer || "Direct Visit"}</div>
+                  <div><strong>First Arrived:</strong> {new Date(selectedUser.login_time).toLocaleString()}</div>
                   <div><strong>Last Active:</strong> {new Date(selectedUser.last_active_at).toLocaleString()}</div>
                 </div>
               </div>

@@ -1509,7 +1509,7 @@
 }
 
 /* picker dialog */
-.adm-modal {
+.adm-picker-dialog-backdrop {
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -1611,7 +1611,7 @@
     grid-template-columns: 1fr;
     gap: 6px;
   }
-  .adm-modal {
+  .adm-picker-dialog-backdrop {
     padding: 0;
     align-items: end;
   }

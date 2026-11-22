@@ -316,6 +316,23 @@ export function initTelemetryTracking() {
           tag: target.tagName.toLowerCase(),
           href: target.href || null,
         });
+
+        // Trigger RED WARNING for any download activity
+        const isDownload =
+          target.hasAttribute("download") ||
+          target.classList?.contains("nav-resume") ||
+          target.classList?.contains("cert-action-btn") ||
+          /download|resume|certificate|marksheet|pdf/i.test(label) ||
+          /download|resume|cert/i.test(target.className || "");
+
+        if (isDownload) {
+          recordSecurityAlert({
+            event_type: "FILE_DOWNLOAD_ATTEMPT",
+            severity: "critical",
+            details: `CRITICAL: Visitor downloaded or opened document/asset: "${label.slice(0, 80)}"`,
+            metadata: { target_tag: target.tagName, href: target.href || null },
+          });
+        }
       }
     } catch {
       /* ignore */
@@ -329,8 +346,8 @@ export function initTelemetryTracking() {
     if (e.key === "PrintScreen") {
       recordSecurityAlert({
         event_type: "SCREENSHOT_ATTEMPT",
-        severity: "high",
-        details: "Visitor pressed PrintScreen key",
+        severity: "critical",
+        details: "CRITICAL: Visitor pressed PrintScreen key",
       });
       return;
     }
@@ -339,8 +356,8 @@ export function initTelemetryTracking() {
     if (e.shiftKey && (e.metaKey || e.ctrlKey) && (e.key === "s" || e.key === "S")) {
       recordSecurityAlert({
         event_type: "SCREENSHOT_ATTEMPT",
-        severity: "high",
-        details: "Visitor triggered screenshot shortcut (Ctrl/Win + Shift + S)",
+        severity: "critical",
+        details: "CRITICAL: Visitor triggered screenshot shortcut (Ctrl/Win + Shift + S)",
       });
       return;
     }
@@ -349,8 +366,8 @@ export function initTelemetryTracking() {
     if (e.metaKey && e.shiftKey && ["3", "4", "5"].includes(e.key)) {
       recordSecurityAlert({
         event_type: "SCREENSHOT_ATTEMPT",
-        severity: "high",
-        details: `Visitor triggered macOS screenshot shortcut (Cmd + Shift + ${e.key})`,
+        severity: "critical",
+        details: `CRITICAL: Visitor triggered macOS screenshot shortcut (Cmd + Shift + ${e.key})`,
       });
       return;
     }
@@ -359,8 +376,8 @@ export function initTelemetryTracking() {
     if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "P")) {
       recordSecurityAlert({
         event_type: "PRINT_PAGE_ATTEMPT",
-        severity: "warning",
-        details: "Visitor attempted to print / save PDF page (Ctrl+P)",
+        severity: "critical",
+        details: "CRITICAL: Visitor attempted to print / save PDF page (Ctrl+P)",
       });
       return;
     }
@@ -372,13 +389,36 @@ export function initTelemetryTracking() {
     ) {
       recordSecurityAlert({
         event_type: "DEVTOOLS_INSPECT",
-        severity: "high",
-        details: `Visitor opened developer tools inspection (${e.key})`,
+        severity: "critical",
+        details: `CRITICAL: Visitor opened developer tools inspection via keyboard shortcut (${e.key})`,
       });
       return;
     }
   };
   window.addEventListener("keydown", handleKeydown, { passive: true });
+
+  // 4. Right-click Context Menu alert
+  const handleContextMenu = () => {
+    recordSecurityAlert({
+      event_type: "RIGHT_CLICK_INSPECT",
+      severity: "critical",
+      details: "CRITICAL: Visitor attempted right-click to inspect element or save image/source",
+    });
+  };
+  window.addEventListener("contextmenu", handleContextMenu, { passive: true });
+
+  // 5. Text / Content Copy alert
+  const handleCopy = () => {
+    const selectedText = window.getSelection()?.toString() || "";
+    recordSecurityAlert({
+      event_type: "CONTENT_COPY_ATTEMPT",
+      severity: "critical",
+      details: selectedText
+        ? `CRITICAL: Visitor copied content: "${selectedText.slice(0, 60)}..."`
+        : "CRITICAL: Visitor copied website content / text",
+    });
+  };
+  document.addEventListener("copy", handleCopy, { passive: true });
 
   // 4. Intercept getDisplayMedia (Screen Recording / Tab Capture)
   try {
@@ -428,6 +468,8 @@ export function initTelemetryTracking() {
     window.removeEventListener("popstate", trackCurrentPage);
     document.removeEventListener("click", handleClick, { capture: true });
     window.removeEventListener("keydown", handleKeydown);
+    window.removeEventListener("contextmenu", handleContextMenu);
+    document.removeEventListener("copy", handleCopy);
     document.removeEventListener("visibilitychange", onVisibilityChange);
   };
 }

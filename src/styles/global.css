@@ -3827,25 +3827,47 @@ button:disabled {
 
 /* Modals */
 .adm-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  background: rgba(10, 16, 28, 0.72) !important;
+  backdrop-filter: blur(8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  overflow-y: auto !important;
+}
+
+@keyframes admModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .adm-modal {
-  background: var(--surface);
-  border-radius: var(--r-lg);
+  position: relative !important;
+  background: #0f172a !important;
+  background-color: var(--surface) !important;
+  border-radius: var(--r-lg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   max-width: 580px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-xl);
+  box-shadow: 0 30px 70px -10px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  animation: admModalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  margin: auto !important;
 }
 
 .adm-modal-head {
@@ -3859,7 +3881,18 @@ button:disabled {
 .adm-modal-close {
   background: none;
   border: none;
+  color: var(--text-soft);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: var(--r-sm);
+  transition: all 0.15s ease;
+}
+.adm-modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
 .adm-modal-form {
@@ -3872,16 +3905,28 @@ button:disabled {
 .adm-modal-form label {
   font-size: 13px;
   font-weight: 600;
+  color: var(--text);
 }
 
 .adm-modal-form input,
 .adm-modal-form select,
 .adm-modal-form textarea {
   width: 100%;
-  padding: 9px 12px;
+  padding: 10px 14px;
   border-radius: var(--r-sm);
   border: 1px solid var(--border);
+  background: var(--bg-soft, rgba(255, 255, 255, 0.04));
+  color: var(--text);
   font-size: 13.5px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.adm-modal-form input:focus,
+.adm-modal-form select:focus,
+.adm-modal-form textarea:focus {
+  outline: none;
+  border-color: var(--sky-400);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
 }
 
 .adm-form-row {
@@ -3894,7 +3939,9 @@ button:disabled {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
 }
 
 /* Users Tab Master-Detail */

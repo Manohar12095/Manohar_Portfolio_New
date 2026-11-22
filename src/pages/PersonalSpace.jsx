@@ -164,6 +164,13 @@ export default function PersonalSpace() {
           </button>
           <button
             type="button"
+            className={`personal-tab ${filter === "document" ? "is-active" : ""}`}
+            onClick={() => setFilter("document")}
+          >
+            <Award size={15} /> Documents & Marksheets ({items.filter(i => i.type === "document" || i.type === "file").length})
+          </button>
+          <button
+            type="button"
             className={`personal-tab ${filter === "text" ? "is-active" : ""}`}
             onClick={() => setFilter("text")}
           >
@@ -182,13 +189,6 @@ export default function PersonalSpace() {
             onClick={() => setFilter("video")}
           >
             <Video size={15} /> Videos ({items.filter(i => i.type === "video").length})
-          </button>
-          <button
-            type="button"
-            className={`personal-tab ${filter === "certs" ? "is-active" : ""}`}
-            onClick={() => setFilter("certs")}
-          >
-            <Award size={15} /> Private Certs ({privateCerts.length})
           </button>
         </div>
 
@@ -232,38 +232,58 @@ export default function PersonalSpace() {
             )}
 
             {/* Other Personal Items */}
-            {filter !== "certs" && displayItems.map((item) => (
-              <div key={item.id} className={`personal-card personal-card-${item.type}`}>
-                {item.type === "photo" && item.media_url && (
-                  <div className="personal-card-media">
-                    <SmartImage src={item.media_url} alt={item.title} className="personal-media-img" />
-                  </div>
-                )}
+            {filter !== "certs" && displayItems.map((item) => {
+              const driveMatch = item.media_url?.match(/\/d\/([a-zA-Z0-9_-]+)/) || item.media_url?.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+              const driveId = driveMatch ? driveMatch[1] : null;
 
-                {item.type === "video" && item.media_url && (
-                  <div className="personal-card-media">
-                    <VideoSurface src={item.media_url} controls loop muted={false} title={item.title} />
-                  </div>
-                )}
+              return (
+                <div key={item.id} className={`personal-card personal-card-${item.type}`}>
+                  {item.type === "photo" && item.media_url && (
+                    <div className="personal-card-media">
+                      <SmartImage src={item.media_url} alt={item.title} className="personal-media-img" />
+                    </div>
+                  )}
 
-                <div className="personal-card-body">
-                  <div className="personal-card-meta">
-                    <span className="personal-type-label">
-                      {item.type === "text" && <FileText size={14} />}
-                      {item.type === "photo" && <Image size={14} />}
-                      {item.type === "video" && <Video size={14} />}
-                      {item.type.toUpperCase()}
-                    </span>
-                    <span className="personal-date">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
+                  {item.type === "video" && item.media_url && (
+                    <div className="personal-card-media">
+                      <VideoSurface src={item.media_url} controls loop muted={false} title={item.title} />
+                    </div>
+                  )}
 
-                  {item.title && <h3 className="personal-card-title">{item.title}</h3>}
-                  {item.content && <p className="personal-card-text">{item.content}</p>}
+                  <div className="personal-card-body">
+                    <div className="personal-card-meta">
+                      <span className="personal-type-label">
+                        {item.type === "text" && <FileText size={14} />}
+                        {item.type === "photo" && <Image size={14} />}
+                        {item.type === "video" && <Video size={14} />}
+                        {(item.type === "document" || item.type === "file") && <Award size={14} />}
+                        {(item.category || item.type).toUpperCase()}
+                      </span>
+                      <span className="personal-date">
+                        {new Date(item.created_at || Date.now()).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    {item.title && <h3 className="personal-card-title">{item.title}</h3>}
+                    {item.content && <p className="personal-card-text">{item.content}</p>}
+
+                    {item.media_url && (
+                      <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                        <a
+                          href={item.media_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-primary btn-sm"
+                          style={{ flex: 1, textAlign: "center" }}
+                        >
+                          <ExternalLink size={14} /> View / Download Document
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
