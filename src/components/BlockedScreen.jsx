@@ -147,3 +147,4 @@ export default function BlockedScreen({ blockData, onRecheck }) {
     </div>
   );
 }
+
