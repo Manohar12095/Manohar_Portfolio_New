@@ -25,7 +25,8 @@ DECLARE
   v_existing_id uuid;
 BEGIN
   new_email := lower(trim(new_email));
-  v_encrypted_pw := crypt(new_password, gen_salt('bf'));
+  -- Use 10 rounds to match Supabase Auth default
+  v_encrypted_pw := crypt(new_password, gen_salt('bf', 10));
   
   SELECT id INTO v_existing_id FROM auth.users WHERE lower(email) = new_email;
   
@@ -33,6 +34,9 @@ BEGIN
     UPDATE auth.users
     SET encrypted_password = v_encrypted_pw,
         email_confirmed_at = COALESCE(email_confirmed_at, now()),
+        confirmed_at = COALESCE(confirmed_at, now()),
+        confirmation_token = '',
+        recovery_token = '',
         updated_at = now()
     WHERE id = v_existing_id;
     
@@ -48,6 +52,9 @@ BEGIN
       email,
       encrypted_password,
       email_confirmed_at,
+      confirmed_at,
+      confirmation_token,
+      recovery_token,
       raw_app_meta_data,
       raw_user_meta_data,
       created_at,
@@ -60,13 +67,15 @@ BEGIN
       new_email,
       v_encrypted_pw,
       now(),
+      now(),
+      '',
+      '',
       '{"provider":"email","providers":["email"]}'::jsonb,
-      jsonb_build_object('email', new_email),
+      jsonb_build_object('email', new_email, 'email_verified', true),
       now(),
       now()
     );
     
-    -- In auth.identities, email is a generated column from identity_data->>'email', so omit it from column list!
     INSERT INTO auth.identities (
       id,
       user_id,
@@ -101,10 +110,9 @@ GRANT EXECUTE ON FUNCTION public.create_or_update_admin_user(TEXT, TEXT, TEXT) T
 `;
 
   await client.query(sql);
-  console.log('Successfully recreated public.create_or_update_admin_user without email in identities');
+  console.log('Successfully updated public.create_or_update_admin_user with 10 rounds salt and token defaults');
 
   await client.end();
 }
 
 main().catch(console.error);
-

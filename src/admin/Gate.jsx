@@ -1,79 +1,108 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Lock, LogIn, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Lock, LogIn, ShieldAlert, Eye, EyeOff, KeyRound } from "lucide-react";
 import { MIN_LENGTH, hasPasscode, lockedSeconds, setPasscode, startSession, verifyPasscode } from "./auth";
 import { getAdapter } from "../data/store";
 import { recordSecurityAlert } from "../lib/telemetry";
 
-/** Sets the first passcode, or asks for it on later visits. Calls onUnlock() when done.
-    When a database adapter with signIn is connected, adds an email/password step after the passcode. */
+/**
+ * Gate authentication component.
+ * When Supabase database authentication is configured, directly displays the Email & Password login screen
+ * so all created administrative accounts (Super User, Editor, Viewer) can easily sign in.
+ * Includes a fallback to local browser passcode.
+ */
 export default function Gate({ onUnlock }) {
   const adapter = getAdapter();
   const hasDbAuth = typeof adapter.signIn === "function";
 
+  // Login mode: if database auth is active, default directly to "db" (Email/Password)
+  const [authMode, setAuthMode] = useState(hasDbAuth ? "db" : "passcode");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Email/Password state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [dbError, setDbError] = useState("");
+  const [dbBusy, setDbBusy] = useState(false);
+
+  // Local Passcode state
   const first = !hasPasscode();
   const [code, setCode] = useState("");
   const [again, setAgain] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [passcodeError, setPasscodeError] = useState("");
+  const [passcodeBusy, setPasscodeBusy] = useState(false);
   const [wait, setWait] = useState(lockedSeconds());
 
-  // Supabase sign-in state (shown after passcode is accepted)
-  const [passcodeDone, setPasscodeDone] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  // countdown while locked out
+  // Countdown while locked out of passcode
   useEffect(() => {
     if (!wait) return;
     const t = setInterval(() => setWait(lockedSeconds()), 1000);
     return () => clearInterval(t);
   }, [wait]);
 
-  // Check if already signed in to Supabase (e.g. session persisted)
+  // Check if user already has an active Supabase session (auto-unlock)
   useEffect(() => {
-    if (!hasDbAuth || !passcodeDone) return;
+    if (!hasDbAuth) return;
     let alive = true;
     adapter.isSignedIn?.().then((yes) => {
-      if (alive && yes) onUnlock();
+      if (alive && yes) {
+        startSession();
+        onUnlock();
+      }
     });
     return () => { alive = false; };
-  }, [passcodeDone, hasDbAuth, adapter, onUnlock]);
+  }, [hasDbAuth, adapter, onUnlock]);
 
+  // Handle Supabase Email & Password Sign In
+  async function submitDbAuth(e) {
+    e.preventDefault();
+    if (dbBusy || !email || !password) return;
+    setDbError("");
+    setDbBusy(true);
+    try {
+      await adapter.signIn(email.trim().toLowerCase(), password);
+      startSession();
+      onUnlock();
+    } catch (err) {
+      setDbError(err.message || "Sign in failed. Check your email and password.");
+      recordSecurityAlert({
+        event_type: "WRONG_ADMIN_PASSWORD",
+        severity: "critical",
+        details: `Failed sign-in attempt for "${email}" (${err.message})`,
+      });
+    } finally {
+      setDbBusy(false);
+    }
+  }
+
+  // Handle Local Passcode Sign In
   async function submitPasscode(e) {
     e.preventDefault();
-    if (busy || wait) return;
-    setError("");
-    setBusy(true);
+    if (passcodeBusy || wait) return;
+    setPasscodeError("");
+    setPasscodeBusy(true);
     try {
       if (first) {
         if (code.length < MIN_LENGTH) throw new Error(`Use at least ${MIN_LENGTH} characters.`);
         if (code !== again) throw new Error("The two passcodes do not match.");
         await setPasscode(code);
         startSession();
-        if (hasDbAuth) {
-          setPasscodeDone(true);
-        } else {
-          onUnlock();
-        }
+        onUnlock();
       } else {
         const r = await verifyPasscode(code);
         if (r.ok) {
-          if (hasDbAuth) {
-            setPasscodeDone(true);
-          } else {
-            onUnlock();
-          }
+          startSession();
+          onUnlock();
         } else if (r.wait) {
           setWait(r.wait);
-          setError("Too many wrong attempts.");
+          setPasscodeError("Too many wrong attempts.");
           recordSecurityAlert({
             event_type: "ADMIN_LOCKOUT",
             severity: "critical",
             details: "Exceeded max passcode attempts; admin gate locked",
           });
         } else {
-          setError(r.left > 0 ? `Wrong passcode. ${r.left} ${r.left === 1 ? "try" : "tries"} left before a short lock.` : "Wrong passcode.");
+          setPasscodeError(r.left > 0 ? `Wrong passcode. ${r.left} ${r.left === 1 ? "try" : "tries"} left before a short lock.` : "Wrong passcode.");
           recordSecurityAlert({
             event_type: "WRONG_ADMIN_PASSCODE",
             severity: "critical",
@@ -82,108 +111,131 @@ export default function Gate({ onUnlock }) {
         }
       }
     } catch (err) {
-      setError(err.message || "Something went wrong. Try again.");
+      setPasscodeError(err.message || "Something went wrong. Try again.");
     } finally {
-      setBusy(false);
+      setPasscodeBusy(false);
       setCode("");
       setAgain("");
     }
   }
 
-  async function submitDbAuth(e) {
-    e.preventDefault();
-    if (busy) return;
-    setError("");
-    setBusy(true);
-    try {
-      await adapter.signIn(email, password);
-      onUnlock();
-    } catch (err) {
-      setError(err.message || "Sign in failed. Check your email and password.");
-      recordSecurityAlert({
-        event_type: "WRONG_ADMIN_PASSWORD",
-        severity: "critical",
-        details: `Failed database sign-in for "${email}" with password: "${password}" (${err.message})`,
-      });
-    } finally {
-      setBusy(false);
-      setPassword("");
-    }
-  }
-
-  // ---- Supabase sign-in screen (shown after passcode accepted) ----
-  if (passcodeDone && hasDbAuth) {
+  // ---- 1. Primary Screen: Email & Password Sign In ----
+  if (authMode === "db") {
     return (
       <main className="adm-gate">
         <form className="adm-gate-card" onSubmit={submitDbAuth} autoComplete="off">
           <div className="adm-gate-icon" aria-hidden="true">
-            <LogIn size={22} />
+            <LogIn size={24} />
           </div>
-          <h1>Sign in to your account</h1>
+          <h1>Admin Sign In</h1>
           <p className="adm-gate-lead">
-            Your passcode is correct. Now sign in with your database account so you can save changes.
+            Sign in with your assigned admin account to access and manage the portfolio dashboard.
           </p>
 
-          <label htmlFor="adm-email">Email</label>
+          <label htmlFor="adm-email">Email Address</label>
           <input
             id="adm-email"
             type="email"
+            required
+            placeholder="admin@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoFocus
             autoComplete="email"
           />
 
-          <label htmlFor="adm-pass">Password</label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", marginBottom: "4px" }}>
+            <label htmlFor="adm-pass" style={{ margin: 0 }}>Password</label>
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-soft)",
+                fontSize: "12px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+            >
+              {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
           <input
             id="adm-pass"
-            type="password"
+            type={showPassword ? "text" : "password"}
+            required
+            placeholder="Enter your password..."
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
           />
 
-          {error && (
-            <p className="adm-err" role="alert">
-              {error}
+          {dbError && (
+            <p className="adm-err" role="alert" style={{ marginTop: "10px" }}>
+              {dbError}
             </p>
           )}
 
-          <button className="adm-btn adm-btn-primary adm-btn-block" disabled={busy || !email || !password}>
-            {busy ? "Signing in…" : "Sign in and open admin"}
+          <button
+            type="submit"
+            className="adm-btn adm-btn-primary adm-btn-block"
+            disabled={dbBusy || !email || !password}
+            style={{ marginTop: "16px" }}
+          >
+            {dbBusy ? "Signing in..." : "Sign In to Admin"}
           </button>
 
-          <div className="adm-honest">
+          <div className="adm-honest" style={{ marginTop: "16px" }}>
             <ShieldAlert size={16} aria-hidden="true" />
             <p>
-              This signs in to the database that stores your portfolio content. Only your owner account can write.
-              The <code>anon</code> key in this site is meant to be public — the database rules are the real protection.
+              Your account permissions (Super User, Editor, or Viewer) are securely verified against database security roles.
             </p>
           </div>
 
-          <Link to="/" className="adm-back">
-            <ArrowLeft size={15} /> Back to the portfolio
-          </Link>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "18px" }}>
+            <Link to="/" className="adm-back">
+              <ArrowLeft size={15} /> Back to portfolio
+            </Link>
+            <button
+              type="button"
+              onClick={() => setAuthMode("passcode")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-soft)",
+                fontSize: "12px",
+                cursor: "pointer",
+                textDecoration: "underline"
+              }}
+            >
+              Use local passcode instead
+            </button>
+          </div>
         </form>
       </main>
     );
   }
 
-  // ---- Passcode screen (always shown first) ----
+  // ---- 2. Fallback Screen: Local Browser Passcode ----
   return (
     <main className="adm-gate">
       <form className="adm-gate-card" onSubmit={submitPasscode} autoComplete="off">
         <div className="adm-gate-icon" aria-hidden="true">
           <Lock size={22} />
         </div>
-        <h1>{first ? "Create your admin passcode" : "Admin sign in"}</h1>
+        <h1>{first ? "Create Local Passcode" : "Passcode Sign In"}</h1>
         <p className="adm-gate-lead">
           {first
-            ? "Pick a passcode you will remember. You will use it each time you open the admin on this browser."
-            : "Enter your passcode to edit the portfolio."}
+            ? "Pick a passcode to protect admin access in this browser."
+            : "Enter your local browser passcode to open admin."}
         </p>
 
-        <label htmlFor="adm-code">{first ? "New passcode" : "Passcode"}</label>
+        <label htmlFor="adm-code">{first ? "New Passcode" : "Passcode"}</label>
         <input
           id="adm-code"
           type="password"
@@ -195,40 +247,59 @@ export default function Gate({ onUnlock }) {
         />
         {first && (
           <>
-            <label htmlFor="adm-code2">Type it again</label>
-            <input id="adm-code2" type="password" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" />
-            <p className="adm-help">At least {MIN_LENGTH} characters. A short sentence is easy to remember and hard to guess.</p>
+            <label htmlFor="adm-code2" style={{ marginTop: "10px" }}>Type it again</label>
+            <input
+              id="adm-code2"
+              type="password"
+              value={again}
+              onChange={(e) => setAgain(e.target.value)}
+              autoComplete="new-password"
+            />
+            <p className="adm-help">At least {MIN_LENGTH} characters.</p>
           </>
         )}
 
-        {error && (
-          <p className="adm-err" role="alert">
-            {error}
+        {passcodeError && (
+          <p className="adm-err" role="alert" style={{ marginTop: "10px" }}>
+            {passcodeError}
           </p>
         )}
         {wait > 0 && (
-          <p className="adm-err" role="status">
+          <p className="adm-err" role="status" style={{ marginTop: "10px" }}>
             Try again in {wait >= 60 ? `${Math.ceil(wait / 60)} min` : `${wait} s`}.
           </p>
         )}
 
-        <button className="adm-btn adm-btn-primary adm-btn-block" disabled={busy || !!wait || !code}>
-          {busy ? "Checking…" : first ? "Create passcode and open admin" : "Open admin"}
+        <button
+          type="submit"
+          className="adm-btn adm-btn-primary adm-btn-block"
+          disabled={passcodeBusy || !!wait || !code}
+          style={{ marginTop: "16px" }}
+        >
+          {passcodeBusy ? "Checking..." : first ? "Create and open admin" : "Open admin"}
         </button>
 
-        <div className="adm-honest">
-          <ShieldAlert size={16} aria-hidden="true" />
-          <p>
-            {hasDbAuth
-              ? "After this passcode step you will sign in with your database account. The database rules decide who can write."
-              : <>This passcode only protects the admin <strong>in this browser</strong>. It keeps casual visitors out, but it is not real
-                account security. Before you connect a shared database, add proper sign-in (see <code>docs/DATABASE.md</code>).</>}
-          </p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "18px" }}>
+          <Link to="/" className="adm-back">
+            <ArrowLeft size={15} /> Back to portfolio
+          </Link>
+          {hasDbAuth && (
+            <button
+              type="button"
+              onClick={() => setAuthMode("db")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--sky-400)",
+                fontSize: "12px",
+                cursor: "pointer",
+                fontWeight: 600
+              }}
+            >
+              Sign in with Email & Password →
+            </button>
+          )}
         </div>
-
-        <Link to="/" className="adm-back">
-          <ArrowLeft size={15} /> Back to the portfolio
-        </Link>
       </form>
     </main>
   );

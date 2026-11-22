@@ -74,52 +74,43 @@ export default function UserControlTab({ currentUserEmail, currentUserRole }) {
 
     setSubmitting(true);
     try {
-      // 1. First attempt via Supabase RPC function (secure server-side creation with pgcrypto)
       let userId = null;
-      try {
+      const supaUrl = import.meta.env.VITE_SUPABASE_URL || "https://sqbrczfojykfhfugbisr.supabase.co";
+      const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_2sr3UUxFtn5ypkr8tCHWpA_Oxr6FMdl";
+      const tempAuthClient = createClient(supaUrl, supaKey, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+
+      // 1. Register user with standard Supabase Auth
+      const { data: signData, error: signErr } = await tempAuthClient.auth.signUp({
+        email: emailClean,
+        password: passwordClean
+      });
+
+      if (signErr && !signErr.message?.includes("already registered")) {
+        // Fallback to RPC if signup API gives special error
         const { data: rpcData, error: rpcErr } = await supabase.rpc("create_or_update_admin_user", {
           new_email: emailClean,
           new_password: passwordClean,
           new_role: newRole
         });
-        if (!rpcErr && rpcData?.user_id) {
-          userId = rpcData.user_id;
-        }
-      } catch (e) {
-        console.warn("RPC attempt failed, falling back to client signup:", e);
+        if (rpcErr) throw signErr;
+        userId = rpcData?.user_id;
+      } else {
+        userId = signData?.user?.id;
       }
 
-      // 2. If RPC was bypassed or had no response, register via isolated Supabase Auth client
-      if (!userId) {
-        const supaUrl = import.meta.env.VITE_SUPABASE_URL || "https://sqbrczfojykfhfugbisr.supabase.co";
-        const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_2sr3UUxFtn5ypkr8tCHWpA_Oxr6FMdl";
-        const tempAuthClient = createClient(supaUrl, supaKey, {
-          auth: { persistSession: false, autoRefreshToken: false }
-        });
-
-        const { data: signData, error: signErr } = await tempAuthClient.auth.signUp({
+      // 2. Assign role in public.admin_roles
+      const { error: roleErr } = await supabase
+        .from("admin_roles")
+        .upsert({
+          user_id: userId || "00000000-0000-0000-0000-000000000000",
           email: emailClean,
-          password: passwordClean
-        });
+          role: newRole,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "email" });
 
-        if (signErr && !signErr.message?.includes("already registered")) {
-          throw signErr;
-        }
-
-        userId = signData?.user?.id || "00000000-0000-0000-0000-000000000000";
-
-        // Assign role in admin_roles
-        const { error: roleErr } = await supabase
-          .from("admin_roles")
-          .upsert({
-            user_id: userId,
-            email: emailClean,
-            role: newRole,
-            updated_at: new Date().toISOString()
-          }, { onConflict: "email" });
-
-        if (roleErr) throw roleErr;
-      }
+      if (roleErr) throw roleErr;
 
       setCreatedCredentials({
         email: emailClean,
