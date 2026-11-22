@@ -107,3 +107,4 @@ GRANT EXECUTE ON FUNCTION public.create_or_update_admin_user(TEXT, TEXT, TEXT) T
 }
 
 main().catch(console.error);
+
