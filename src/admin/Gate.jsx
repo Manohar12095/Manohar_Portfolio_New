@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Lock, LogIn, ShieldAlert, Eye, EyeOff, KeyRound } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 import { MIN_LENGTH, hasPasscode, lockedSeconds, setPasscode, startSession, verifyPasscode } from "./auth";
 import { getAdapter } from "../data/store";
 import { recordSecurityAlert } from "../lib/telemetry";
+
+const supaUrl = import.meta.env.VITE_SUPABASE_URL || "https://sqbrczfojykfhfugbisr.supabase.co";
+const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_2sr3UUxFtn5ypkr8tCHWpA_Oxr6FMdl";
 
 /**
  * Gate authentication component.
@@ -13,10 +17,10 @@ import { recordSecurityAlert } from "../lib/telemetry";
  */
 export default function Gate({ onUnlock }) {
   const adapter = getAdapter();
-  const hasDbAuth = typeof adapter.signIn === "function";
+  const hasDbAuth = typeof adapter?.signIn === "function" || !!supaUrl;
 
-  // Login mode: if database auth is active, default directly to "db" (Email/Password)
-  const [authMode, setAuthMode] = useState(hasDbAuth ? "db" : "passcode");
+  // Always default directly to "db" (Email/Password) when Supabase is configured
+  const [authMode, setAuthMode] = useState("db");
   const [showPassword, setShowPassword] = useState(false);
 
   // Email/Password state
@@ -24,6 +28,13 @@ export default function Gate({ onUnlock }) {
   const [password, setPassword] = useState("");
   const [dbError, setDbError] = useState("");
   const [dbBusy, setDbBusy] = useState(false);
+
+  // Ensure "db" auth mode stays active if database auth is present
+  useEffect(() => {
+    if (hasDbAuth) {
+      setAuthMode("db");
+    }
+  }, [hasDbAuth]);
 
   // Local Passcode state
   const first = !hasPasscode();
@@ -60,7 +71,16 @@ export default function Gate({ onUnlock }) {
     setDbError("");
     setDbBusy(true);
     try {
-      await adapter.signIn(email.trim().toLowerCase(), password);
+      if (typeof adapter?.signIn === "function") {
+        await adapter.signIn(email.trim().toLowerCase(), password);
+      } else {
+        const directClient = createClient(supaUrl, supaKey);
+        const { error: directErr } = await directClient.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        });
+        if (directErr) throw directErr;
+      }
       startSession();
       onUnlock();
     } catch (err) {
