@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Lock, LogIn, ShieldAlert, Eye, EyeOff, KeyRound } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
-import { MIN_LENGTH, hasPasscode, lockedSeconds, setPasscode, startSession, verifyPasscode } from "./auth";
+import { MIN_LENGTH, hasPasscode, lockedSeconds, setPasscode, startSession, verifyPasscode, isSessionActive } from "./auth";
 import { getAdapter } from "../data/store";
 import { recordSecurityAlert } from "../lib/telemetry";
 
@@ -51,13 +51,14 @@ export default function Gate({ onUnlock }) {
     return () => clearInterval(t);
   }, [wait]);
 
-  // Check if user already has an active Supabase session (auto-unlock)
+  // Check if user already has an active Supabase session (auto-unlock ONLY if session is active in this tab)
   useEffect(() => {
     if (!hasDbAuth) return;
+    if (!isSessionActive()) return; // If session ended or locked out, do NOT auto-unlock!
+
     let alive = true;
     adapter.isSignedIn?.().then((yes) => {
       if (alive && yes) {
-        startSession();
         onUnlock();
       }
     });

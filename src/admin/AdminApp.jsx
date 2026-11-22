@@ -94,15 +94,29 @@ function Shell({ onLock }) {
     });
   }, [supabase]);
 
-  // Filter tabs by role: Editors & Viewers cannot enter personal space or user control
+  const isSuperUser =
+    userRole === "superuser" ||
+    userEmail === "manoharorignal@gmail.com" ||
+    userEmail === "pvcmanohar@gmail.com";
+
+  // Filter tabs by role:
+  // - Super User has access to every single tab.
+  // - Editors and Viewers CANNOT view user login and activity data, and CANNOT access database or download backups.
   const accessibleTabs = useMemo(() => {
     return TABS.filter((t) => {
-      if (userRole === "editor" || userRole === "viewer") {
-        if (t.id === "personal" || t.id === "userControl") return false;
+      if (isSuperUser) return true;
+      if (
+        t.id === "data" ||
+        t.id === "users" ||
+        t.id === "monitoring" ||
+        t.id === "personal" ||
+        t.id === "userControl"
+      ) {
+        return false;
       }
       return true;
     });
-  }, [userRole]);
+  }, [isSuperUser]);
 
   const tab = accessibleTabs.find((t) => `#${t.id}` === hash) || accessibleTabs[0] || TABS[0];
 
@@ -172,12 +186,39 @@ function Shell({ onLock }) {
   let body;
   if (tab.custom === "sections") body = <SectionsEditor />;
   else if (tab.custom === "themes") body = <ThemesTab />;
-  else if (tab.custom === "data") body = <DataTools />;
+  else if (tab.custom === "data") {
+    body = isSuperUser ? (
+      <DataTools isSuperUser={isSuperUser} />
+    ) : (
+      <div className="adm-access-restricted" style={{ padding: "40px", textAlign: "center" }}>
+        <h3>Access Restricted: Super User Only</h3>
+        <p>Database management, backups, and security settings are restricted to Super User.</p>
+      </div>
+    );
+  }
   else if (tab.custom === "media") body = <MediaTab />;
-  else if (tab.custom === "monitoring") body = <MonitoringTab />;
+  else if (tab.custom === "monitoring") {
+    body = isSuperUser ? (
+      <MonitoringTab />
+    ) : (
+      <div className="adm-access-restricted" style={{ padding: "40px", textAlign: "center" }}>
+        <h3>Access Restricted: Super User Only</h3>
+        <p>Activity monitoring and telemetry are restricted to Super User.</p>
+      </div>
+    );
+  }
   else if (tab.custom === "certificates") body = <CertificatesTab />;
   else if (tab.custom === "personal") body = <PersonalSpaceTab currentUserEmail={userEmail} currentUserRole={userRole} />;
-  else if (tab.custom === "users") body = <UsersTab currentUserEmail={userEmail} currentUserRole={userRole} />;
+  else if (tab.custom === "users") {
+    body = isSuperUser ? (
+      <UsersTab currentUserEmail={userEmail} currentUserRole={userRole} />
+    ) : (
+      <div className="adm-access-restricted" style={{ padding: "40px", textAlign: "center" }}>
+        <h3>Access Restricted: Super User Only</h3>
+        <p>Visitor dossiers, IP details, and click streams are confidential to Super User.</p>
+      </div>
+    );
+  }
   else if (tab.custom === "userControl") body = <UserControlTab currentUserEmail={userEmail} currentUserRole={userRole} />;
   else body = tab.blocks.map((b) => <Block key={b.title} block={b} />);
 
@@ -223,8 +264,14 @@ function Shell({ onLock }) {
           >
             <Save size={15} /> Save
           </button>
-          <button type="button" className="adm-btn adm-btn-sm" onClick={onLock}>
-            <Lock size={15} /> Lock
+          <button
+            type="button"
+            className="adm-btn adm-btn-sm adm-btn-lock"
+            onClick={onLock}
+            title="Sign out and lock admin panel"
+            style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }}
+          >
+            <Lock size={14} /> Lock & Sign Out
           </button>
         </div>
       </header>
@@ -267,8 +314,19 @@ function Shell({ onLock }) {
 
 export default function AdminApp() {
   const [unlocked, setUnlocked] = useState(() => isSessionActive());
-  const lock = useCallback(() => {
+  const lock = useCallback(async () => {
     endSession();
+    try {
+      const adapter = getAdapter();
+      if (typeof adapter?.signOut === "function") {
+        await adapter.signOut();
+      }
+      if (adapter?.supabase?.auth) {
+        await adapter.supabase.auth.signOut();
+      }
+    } catch (e) {
+      console.warn("Sign out error:", e);
+    }
     setUnlocked(false);
   }, []);
 

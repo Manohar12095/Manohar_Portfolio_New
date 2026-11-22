@@ -33,7 +33,7 @@ function ConfirmButton({ label, confirmLabel, onConfirm, icon }) {
   );
 }
 
-export default function DataTools() {
+export default function DataTools({ isSuperUser = false }) {
   const { adapter, exportDoc, importDoc, resetContent, resetThemes, dirty } = useContent();
   const [exportMsg, setExportMsg] = useState(null);
   const [importMsg, setImportMsg] = useState(null);
@@ -41,10 +41,26 @@ export default function DataTools() {
   const [resetMsg, setResetMsg] = useState(null);
   const fileRef = useRef(null);
 
+  if (!isSuperUser) {
+    return (
+      <div className="adm-access-denied-card" style={{ padding: "48px 24px", textAlign: "center", background: "rgba(15, 23, 42, 0.6)", borderRadius: "16px", border: "1px solid rgba(239, 68, 68, 0.25)", margin: "20px auto", maxWidth: "600px" }}>
+        <ShieldAlert size={48} color="#ef4444" style={{ margin: "0 auto 16px", display: "block" }} />
+        <h3 style={{ color: "#f87171", margin: "0 0 10px" }}>Access Restricted: Super User Only</h3>
+        <p style={{ color: "var(--text-soft)", fontSize: "14px", lineHeight: "1.6", margin: 0 }}>
+          Database configuration, database backups, and restore operations are strictly reserved for Manohar (Super User).
+        </p>
+      </div>
+    );
+  }
+
   /* ------------------------------- export ------------------------------- */
   const json = () => JSON.stringify(exportDoc(), null, 2);
 
   function download() {
+    if (!isSuperUser) {
+      alert("Access Restricted: Only the Super User can download database backups.");
+      return;
+    }
     const url = URL.createObjectURL(new Blob([json()], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
@@ -56,6 +72,10 @@ export default function DataTools() {
     setExportMsg({ ok: true, text: "Backup downloaded." });
   }
   async function copy() {
+    if (!isSuperUser) {
+      alert("Access Restricted: Only the Super User can copy database data.");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(json());
       setExportMsg({ ok: true, text: "Copied to the clipboard." });

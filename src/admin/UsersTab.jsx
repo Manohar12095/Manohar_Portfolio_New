@@ -31,7 +31,7 @@ export default function UsersTab({ currentUserEmail, currentUserRole }) {
     currentUserEmail === "pvcmanohar@gmail.com";
 
   const fetchData = async () => {
-    if (!supabase) return;
+    if (!supabase || !isSuperUser) return;
     setLoading(true);
     try {
       const [telRes, secRes, blkRes] = await Promise.all([
@@ -50,8 +50,22 @@ export default function UsersTab({ currentUserEmail, currentUserRole }) {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isSuperUser) {
+      fetchData();
+    }
+  }, [isSuperUser]);
+
+  if (!isSuperUser) {
+    return (
+      <div className="adm-access-denied-card" style={{ padding: "48px 24px", textAlign: "center", background: "rgba(15, 23, 42, 0.6)", borderRadius: "16px", border: "1px solid rgba(239, 68, 68, 0.25)", margin: "20px auto", maxWidth: "600px" }}>
+        <ShieldAlert size={48} color="#ef4444" style={{ margin: "0 auto 16px", display: "block" }} />
+        <h3 style={{ color: "#f87171", margin: "0 0 10px" }}>Access Restricted: Super User Only</h3>
+        <p style={{ color: "var(--text-soft)", fontSize: "14px", lineHeight: "1.6", margin: 0 }}>
+          Visitor profiles, activity tracking, link click alerts, and device dossiers are confidential and accessible only to Manohar (Super User).
+        </p>
+      </div>
+    );
+  }
 
   // Helper to find active block for a visitor
   const getActiveBlock = (sessionId, visitorName) => {
