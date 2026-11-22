@@ -3849,6 +3849,7 @@ button:disabled {
     opacity: 0;
     transform: scale(0.96) translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -3890,6 +3891,7 @@ button:disabled {
   border-radius: var(--r-sm);
   transition: all 0.15s ease;
 }
+
 .adm-modal-close:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);
@@ -4474,9 +4476,12 @@ button:disabled {
 }
 
 @keyframes pulseBadge {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
   }
+
   50% {
     box-shadow: 0 2px 14px rgba(236, 72, 153, 0.6);
   }
