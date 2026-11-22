@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { 
   Shield, UserCheck, UserX, Crown, Edit3, Eye, Plus, 
-  Trash2, AlertTriangle, Check, RefreshCw, Key, Copy, EyeOff, Sparkles, X, Lock
+  Trash2, AlertTriangle, Check, RefreshCw, Key, Copy, EyeOff, Sparkles, X, Lock, Ban, Unlock
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { getAdapter } from "../data/store";
+import { BLOCK_DURATIONS, enforceVisitorBlock, releaseVisitorBlock } from "../lib/blocking";
 
 export default function UserControlTab({ currentUserEmail, currentUserRole }) {
   const [rolesList, setRolesList] = useState([]);
@@ -19,6 +20,12 @@ export default function UserControlTab({ currentUserEmail, currentUserRole }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [createdCredentials, setCreatedCredentials] = useState(null);
   const [copiedCreds, setCopiedCreds] = useState(false);
+
+  // Block modal state for admin accounts
+  const [blockUserTarget, setBlockUserTarget] = useState(null);
+  const [blockDuration, setBlockDuration] = useState("1d");
+  const [blockReason, setBlockReason] = useState("Administrative access termination");
+  const [blockBusy, setBlockBusy] = useState(false);
 
   const adapter = getAdapter();
   const supabase = adapter?.supabase;
@@ -183,6 +190,43 @@ export default function UserControlTab({ currentUserEmail, currentUserRole }) {
     }
   };
 
+  const handleConfirmBlockUser = async (e) => {
+    e.preventDefault();
+    if (!blockUserTarget || !isSuperUser) return;
+    setBlockBusy(true);
+    try {
+      await enforceVisitorBlock({
+        email: blockUserTarget.email,
+        durationType: blockDuration,
+        reason: blockReason.trim() || "Administrative access termination",
+        blockedBy: currentUserEmail || "Super User",
+      });
+
+      setStatusMsg(`Enforced ${blockDuration.toUpperCase()} block on ${blockUserTarget.email}`);
+      setBlockUserTarget(null);
+      await fetchRoles();
+      setTimeout(() => setStatusMsg(""), 4000);
+    } catch (err) {
+      alert("Error blocking user: " + err.message);
+    } finally {
+      setBlockBusy(false);
+    }
+  };
+
+  const handleUnblockUser = async (user) => {
+    if (!isSuperUser) return;
+    if (!confirm(`Unblock admin access for ${user.email}?`)) return;
+
+    try {
+      await releaseVisitorBlock({ email: user.email });
+      setStatusMsg(`Unblocked ${user.email}. Access restored.`);
+      await fetchRoles();
+      setTimeout(() => setStatusMsg(""), 4000);
+    } catch (err) {
+      alert("Error unblocking user: " + err.message);
+    }
+  };
+
   const filteredRoles = useMemo(() => {
     if (!searchTerm.trim()) return rolesList;
     const q = searchTerm.toLowerCase();
@@ -317,6 +361,11 @@ export default function UserControlTab({ currentUserEmail, currentUserRole }) {
                         {r.role === "viewer" && <Eye size={12} />}
                         {r.role.toUpperCase()}
                       </span>
+                      {r.is_blocked && (
+                        <span className="adm-badge-blocked" style={{ marginLeft: "6px" }}>
+                          <Ban size={11} /> BLOCKED
+                        </span>
+                      )}
                     </td>
                     <td>
                       {r.role === "superuser" && "Full Portfolio + Personal Space + Roles"}
@@ -339,16 +388,45 @@ export default function UserControlTab({ currentUserEmail, currentUserRole }) {
                     )}
                     {isSuperUser && (
                       <td>
-                        {!isOwner && (
-                          <button
-                            type="button"
-                            className="adm-btn-icon adm-btn-icon-danger"
-                            title="Revoke access"
-                            onClick={() => handleRemoveRole(r.email)}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          {!isOwner && (
+                            r.is_blocked ? (
+                              <button
+                                type="button"
+                                className="adm-btn-icon"
+                                style={{ color: "#16a34a" }}
+                                title="Unblock user access"
+                                onClick={() => handleUnblockUser(r)}
+                              >
+                                <Unlock size={15} />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="adm-btn-icon"
+                                style={{ color: "#ef4444" }}
+                                title="Block / Terminate user"
+                                onClick={() => {
+                                  setBlockUserTarget(r);
+                                  setBlockDuration("1d");
+                                  setBlockReason("Administrative access termination");
+                                }}
+                              >
+                                <Ban size={15} />
+                              </button>
+                            )
+                          )}
+                          {!isOwner && (
+                            <button
+                              type="button"
+                              className="adm-btn-icon adm-btn-icon-danger"
+                              title="Revoke access"
+                              onClick={() => handleRemoveRole(r.email)}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -449,6 +527,75 @@ export default function UserControlTab({ currentUserEmail, currentUserRole }) {
                 </button>
                 <button type="submit" className="adm-btn adm-btn-primary" disabled={submitting}>
                   {submitting ? "Creating User..." : "Save & Grant Access"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Block Admin User Modal */}
+      {blockUserTarget && (
+        <div className="adm-modal-overlay" onClick={() => setBlockUserTarget(null)}>
+          <div className="adm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="adm-modal-head">
+              <div className="adm-modal-title-area">
+                <div className="adm-modal-icon-badge" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
+                  <Ban size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, color: "#f87171" }}>Block / Terminate Account Access</h3>
+                  <small style={{ color: "var(--text-soft)" }}>
+                    Target: <strong>{blockUserTarget.email}</strong>
+                  </small>
+                </div>
+              </div>
+              <button type="button" className="adm-modal-close" onClick={() => setBlockUserTarget(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmBlockUser} className="adm-modal-form">
+              <div>
+                <label>Select Restriction Duration *</label>
+                <select
+                  value={blockDuration}
+                  onChange={(e) => setBlockDuration(e.target.value)}
+                  style={{ fontWeight: 600 }}
+                >
+                  {BLOCK_DURATIONS.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+                <small style={{ color: "var(--text-soft)", fontSize: "12px", marginTop: "4px", display: "block" }}>
+                  This user will be immediately locked out of the website and admin dashboard until this duration elapses.
+                </small>
+              </div>
+
+              <div>
+                <label>Reason for Block</label>
+                <input
+                  type="text"
+                  value={blockReason}
+                  onChange={(e) => setBlockReason(e.target.value)}
+                  placeholder="Specify violation or custom message shown to blocked user..."
+                  required
+                />
+              </div>
+
+              <div className="adm-modal-actions" style={{ marginTop: "14px" }}>
+                <button type="button" className="adm-btn" onClick={() => setBlockUserTarget(null)}>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="adm-btn adm-btn-primary"
+                  style={{ background: "#dc2626", borderColor: "#dc2626" }}
+                  disabled={blockBusy}
+                >
+                  {blockBusy ? "Enforcing Block..." : "Confirm & Block User"}
                 </button>
               </div>
             </form>

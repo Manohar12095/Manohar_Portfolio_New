@@ -30,3 +30,4 @@ async function inspectAuthTables() {
 }
 
 inspectAuthTables().catch(console.error);
+

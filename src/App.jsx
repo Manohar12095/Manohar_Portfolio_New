@@ -13,6 +13,8 @@ import PersonalSpace from "./pages/PersonalSpace";
 import { prefersReducedMotion } from "./hooks/useMotion";
 import { useContent } from "./context/ContentContext";
 import { getStoredVisitorName, initTelemetryTracking } from "./lib/telemetry";
+import { checkVisitorBlockStatus } from "./lib/blocking";
+import BlockedScreen from "./components/BlockedScreen";
 
 // The admin is its own file, so visitors never download it.
 const AdminApp = lazy(() => import("./admin/AdminApp"));
@@ -70,13 +72,42 @@ function PublicSite() {
 export default function App() {
   const { pathname } = useLocation();
   const { ready } = useContent();
+  const [blockStatus, setBlockStatus] = useState({ isBlocked: false, blockData: null });
+
+  const recheckBlock = async () => {
+    try {
+      const res = await checkVisitorBlockStatus();
+      setBlockStatus(res);
+      return res;
+    } catch {
+      return { isBlocked: false, blockData: null };
+    }
+  };
 
   useEffect(() => {
     const cleanup = initTelemetryTracking();
-    return cleanup;
+    recheckBlock();
+    // Fast periodic polling to catch newly enforced blocks or releases
+    const timer = setInterval(recheckBlock, 6000);
+    return () => {
+      cleanup?.();
+      clearInterval(timer);
+    };
   }, []);
+
   // with a database the saved content arrives a moment after load; browser storage is ready at once
   if (!ready) return <div className="boot" aria-busy="true" aria-label="Loading" />;
+
+  // Enforce access block globally across entire website if active
+  if (blockStatus.isBlocked) {
+    return (
+      <BlockedScreen
+        blockData={blockStatus.blockData}
+        onRecheck={recheckBlock}
+      />
+    );
+  }
+
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     return (
       <Suspense fallback={<div className="adm-loading">Loading admin…</div>}>

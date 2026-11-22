@@ -177,7 +177,7 @@ function Shell({ onLock }) {
   else if (tab.custom === "monitoring") body = <MonitoringTab />;
   else if (tab.custom === "certificates") body = <CertificatesTab />;
   else if (tab.custom === "personal") body = <PersonalSpaceTab currentUserEmail={userEmail} currentUserRole={userRole} />;
-  else if (tab.custom === "users") body = <UsersTab />;
+  else if (tab.custom === "users") body = <UsersTab currentUserEmail={userEmail} currentUserRole={userRole} />;
   else if (tab.custom === "userControl") body = <UserControlTab currentUserEmail={userEmail} currentUserRole={userRole} />;
   else body = tab.blocks.map((b) => <Block key={b.title} block={b} />);
 

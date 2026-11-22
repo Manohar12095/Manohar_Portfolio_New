@@ -317,7 +317,37 @@ export function initTelemetryTracking() {
           href: target.href || null,
         });
 
-        // Trigger RED WARNING for any download activity
+        // 1. Trigger RED WARNING for any website link click
+        const linkElem = target.tagName.toLowerCase() === "a" ? target : target.closest("a");
+        if (linkElem) {
+          const href = linkElem.getAttribute("href") || linkElem.href || "";
+          const isExternal = /^https?:\/\/|^mailto:|^tel:/i.test(href);
+          const linkKind = isExternal ? "External Outbound Link" : "Website Navigation Link";
+
+          recordSecurityAlert({
+            event_type: "WEBSITE_LINK_CLICK",
+            severity: "critical",
+            details: `CRITICAL: Visitor clicked ${linkKind}: "${label.slice(0, 50) || href}" (${href})`,
+            metadata: { href, is_external: isExternal, tag: linkElem.tagName },
+          });
+        }
+
+        // 2. Trigger RED WARNING for any sharing attempt
+        const isShare =
+          /share|forward|tweet|post|copy\s*link/i.test(label) ||
+          /share|social-share/i.test(target.className || "") ||
+          target.hasAttribute("data-share");
+
+        if (isShare) {
+          recordSecurityAlert({
+            event_type: "CONTENT_SHARE_ATTEMPT",
+            severity: "critical",
+            details: `CRITICAL: Visitor attempted to share website link or content: "${label.slice(0, 80)}"`,
+            metadata: { label, href: target.href || null },
+          });
+        }
+
+        // 3. Trigger RED WARNING for any download activity
         const isDownload =
           target.hasAttribute("download") ||
           target.classList?.contains("nav-resume") ||
@@ -431,6 +461,24 @@ export function initTelemetryTracking() {
           details: "Visitor requested display / screen recording stream",
         });
         return originalGetDisplayMedia(...args);
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // Intercept native navigator.share dialog
+  try {
+    if (navigator.share) {
+      const originalShare = navigator.share.bind(navigator);
+      navigator.share = async function (data) {
+        recordSecurityAlert({
+          event_type: "CONTENT_SHARE_ATTEMPT",
+          severity: "critical",
+          details: `CRITICAL: Visitor shared website content via native share: ${data?.title || data?.url || "website share"}`,
+          metadata: data || {},
+        });
+        return originalShare(data);
       };
     }
   } catch {
