@@ -3,12 +3,20 @@ import { Link, useNavigate } from "react-router-dom";
 import { 
   Lock, ArrowLeft, Plus, Image, Video, FileText, Award, Eye, 
   Trash2, ExternalLink, ShieldCheck, Sparkles, Calendar, Heart,
-  Search, Music, Edit3, X, Check, Save, File, RefreshCw, SlidersHorizontal
+  Search, Music, Edit3, X, Check, Save, File, RefreshCw, SlidersHorizontal,
+  Download, FileCheck, Copy
 } from "lucide-react";
 import { getAdapter } from "../data/store";
 import { isSessionActive } from "../admin/auth";
+import { toImageUrl } from "../lib/url";
 import SmartImage from "../components/SmartImage";
 import VideoSurface from "../components/VideoSurface";
+
+function extractDriveId(url) {
+  if (!url) return null;
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
 
 export default function PersonalSpace() {
   const [items, setItems] = useState([]);
@@ -20,6 +28,10 @@ export default function PersonalSpace() {
   const [authorized, setAuthorized] = useState(() => isSessionActive());
   const [pinCode, setPinCode] = useState("");
   const [pinError, setPinError] = useState("");
+
+  // In-website document & note preview modal state
+  const [viewingItem, setViewingItem] = useState(null);
+  const [copiedText, setCopiedText] = useState(false);
 
   // In-place text & item editor modal state
   const [editorOpen, setEditorOpen] = useState(false);
@@ -54,6 +66,18 @@ export default function PersonalSpace() {
     }
     checkAuth();
   }, [supabase]);
+
+  // Close modals on Escape key
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setViewingItem(null);
+        setEditorOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Load private personal items and private certificates
   const loadData = async () => {
@@ -453,9 +477,21 @@ export default function PersonalSpace() {
                 </h2>
                 <div className="personal-certs-grid">
                   {privateCerts.map((cert) => (
-                    <div key={cert.id} className="personal-card personal-cert-card">
-                      <div className="personal-cert-media">
+                    <div 
+                      key={cert.id} 
+                      className="personal-card personal-cert-card"
+                      onClick={() => setViewingItem({
+                        ...cert,
+                        type: "document",
+                        media_url: cert.file_url || cert.image_url
+                      })}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div className="personal-cert-media" style={{ position: "relative" }}>
                         <SmartImage src={cert.image_url} alt={cert.title} className="personal-cert-img" />
+                        <div className="personal-preview-overlay">
+                          <Eye size={18} /> Click to View Document
+                        </div>
                       </div>
                       <div className="personal-card-body">
                         <div className="personal-badge-row">
@@ -464,11 +500,36 @@ export default function PersonalSpace() {
                         </div>
                         <h3>{cert.title}</h3>
                         {cert.description && <p>{cert.description}</p>}
-                        {cert.file_url && (
-                          <a href={cert.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
-                            <ExternalLink size={14} /> Open Document
-                          </a>
-                        )}
+                        <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingItem({
+                                ...cert,
+                                type: "document",
+                                media_url: cert.file_url || cert.image_url
+                              });
+                            }}
+                          >
+                            <Eye size={14} /> View in Website
+                          </button>
+                          {cert.file_url && (
+                            <a 
+                              href={cert.file_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="btn btn-outline btn-sm"
+                              onClick={(e) => e.stopPropagation()}
+                              download
+                              title="Download original file"
+                            >
+                              <Download size={14} />
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -495,13 +556,100 @@ export default function PersonalSpace() {
               const isVideo = item.type === "video";
               const isPhoto = item.type === "photo" || item.type === "image";
               const isDoc = item.type === "document" || item.type === "file" || item.type === "pdf";
+              const driveId = extractDriveId(item.media_url) || item.file_id;
 
               return (
                 <div key={item.id} className={`personal-card personal-card-${item.type || "text"}`}>
-                  {/* Photo Preview */}
+                  {/* Document / PDF Embedded Visual Preview Frame */}
+                  {isDoc && (
+                    <div
+                      className="personal-card-media"
+                      onClick={() => setViewingItem(item)}
+                      style={{
+                        cursor: "pointer",
+                        position: "relative",
+                        height: "200px",
+                        background: "radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 100%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        borderBottom: "1px solid var(--border)"
+                      }}
+                      title="Click to view full PDF document in website"
+                    >
+                      {driveId ? (
+                        <img
+                          src={`https://drive.google.com/thumbnail?id=${driveId}&sz=w800`}
+                          alt={item.title}
+                          loading="lazy"
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+                      ) : null}
+                      <div className="personal-doc-center-badge" style={{ position: "absolute", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", pointerEvents: "none" }}>
+                        <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "rgba(245, 158, 11, 0.2)", display: "grid", placeItems: "center", color: "#f59e0b" }}>
+                          <FileText size={22} />
+                        </div>
+                      </div>
+                      <div className="personal-preview-overlay">
+                        <Eye size={18} /> Click to View Document
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Text Note Formatted Preview Frame */}
+                  {isText && (
+                    <div
+                      className="personal-card-media"
+                      onClick={() => setViewingItem(item)}
+                      style={{
+                        cursor: "pointer",
+                        position: "relative",
+                        minHeight: "150px",
+                        maxHeight: "200px",
+                        padding: "16px",
+                        background: "rgba(255, 255, 255, 0.03)",
+                        display: "flex",
+                        flexDirection: "column",
+                        borderBottom: "1px solid var(--border)",
+                        overflow: "hidden"
+                      }}
+                      title="Click to read full note in website"
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent)", fontSize: "11.5px", fontWeight: 700, marginBottom: "8px" }}>
+                        <FileText size={14} /> Text Note Document
+                      </div>
+                      <pre style={{
+                        margin: 0,
+                        fontSize: "13px",
+                        color: "var(--ink)",
+                        fontFamily: "var(--font-mono, monospace)",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        lineHeight: "1.5"
+                      }}>
+                        {item.content || "Empty note content"}
+                      </pre>
+                      <div className="personal-preview-overlay">
+                        <Eye size={18} /> Click to Read Note
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Photo Preview Frame */}
                   {isPhoto && item.media_url && (
-                    <div className="personal-card-media">
+                    <div 
+                      className="personal-card-media"
+                      onClick={() => setViewingItem(item)}
+                      style={{ cursor: "pointer", position: "relative" }}
+                    >
                       <SmartImage src={item.media_url} alt={item.title} className="personal-media-img" />
+                      <div className="personal-preview-overlay">
+                        <Eye size={18} /> Click to View Image
+                      </div>
                     </div>
                   )}
 
@@ -530,14 +678,14 @@ export default function PersonalSpace() {
 
                     {item.title && <h3 className="personal-card-title">{item.title}</h3>}
 
-                    {/* Content / Text / Notes (with in-place text view) */}
+                    {/* Content Snippet */}
                     {item.content && (
                       <p className="personal-card-text" style={{
                         background: isText ? "rgba(0,0,0,0.02)" : "transparent",
-                        padding: isText ? "10px 12px" : "0",
+                        padding: isText ? "8px 10px" : "0",
                         borderRadius: "6px",
                         borderLeft: isText ? "3px solid var(--accent)" : "none",
-                        fontFamily: isText ? "inherit" : "inherit"
+                        fontSize: "13.5px"
                       }}>
                         {item.content}
                       </p>
@@ -550,20 +698,31 @@ export default function PersonalSpace() {
                       </div>
                     )}
 
-                    {/* Media / Download Links */}
-                    {item.media_url && !isAudio && (
-                      <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+                    {/* In-Website Preview & Download Buttons */}
+                    <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => setViewingItem(item)}
+                        style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                        title="View or read directly in the website"
+                      >
+                        <Eye size={14} /> {isText ? "Read Note in Website" : isDoc ? "View Document in Website" : isPhoto ? "View Full Image" : "Preview in Website"}
+                      </button>
+
+                      {item.media_url && (
                         <a
                           href={item.media_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="btn btn-primary btn-sm"
-                          style={{ flex: 1, textAlign: "center", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                          className="btn btn-outline btn-sm"
+                          title="Download or open original source"
+                          download
                         >
-                          <ExternalLink size={14} /> Open Document / File
+                          <Download size={14} />
                         </a>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {/* In-Place Actions: Edit & Delete */}
                     <div style={{
@@ -601,7 +760,149 @@ export default function PersonalSpace() {
           </div>
         )}
 
-        {/* In-Place Text Editor Modal */}
+        {/* ==========================================================================
+            IN-WEBSITE DOCUMENT & TEXT VIEWER MODAL
+            ========================================================================== */}
+        {viewingItem && (
+          <div className="personal-viewer-overlay" onClick={() => setViewingItem(null)}>
+            <div className="personal-viewer-card" onClick={(e) => e.stopPropagation()}>
+              <div className="personal-viewer-head">
+                <div className="personal-viewer-title-row">
+                  <span className="personal-viewer-badge">
+                    {viewingItem.type === "text" ? <FileText size={15} /> : <Award size={15} />}
+                    {(viewingItem.category || viewingItem.type || "DOCUMENT").toUpperCase()}
+                  </span>
+                  <h3 title={viewingItem.title}>{viewingItem.title}</h3>
+                </div>
+
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  {/* Copy Text Button for Text Items */}
+                  {(viewingItem.type === "text" || viewingItem.type === "note") && (
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(viewingItem.content || "");
+                        setCopiedText(true);
+                        setTimeout(() => setCopiedText(false), 2000);
+                      }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+                    >
+                      {copiedText ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                      {copiedText ? "Copied" : "Copy Content"}
+                    </button>
+                  )}
+
+                  {/* Edit Text Button */}
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => {
+                      const target = viewingItem;
+                      setViewingItem(null);
+                      handleOpenEdit(target);
+                    }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+                  >
+                    <Edit3 size={14} /> Edit
+                  </button>
+
+                  {/* Download Original File */}
+                  {viewingItem.media_url && (
+                    <a
+                      href={viewingItem.media_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-primary btn-sm"
+                      download
+                      style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+                    >
+                      <Download size={14} /> Download File
+                    </a>
+                  )}
+
+                  {/* Close Viewer */}
+                  <button
+                    type="button"
+                    className="personal-viewer-close"
+                    onClick={() => setViewingItem(null)}
+                    title="Close viewer (Esc)"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="personal-viewer-body">
+                {/* 1. Document / PDF View: Interactive Google Drive Frame */}
+                {(viewingItem.type === "document" || viewingItem.type === "file" || viewingItem.type === "pdf") && (() => {
+                  const driveId = extractDriveId(viewingItem.media_url) || viewingItem.file_id;
+                  if (driveId) {
+                    return (
+                      <iframe
+                        src={`https://drive.google.com/file/d/${driveId}/preview`}
+                        title={viewingItem.title}
+                        className="personal-viewer-iframe"
+                        allow="autoplay"
+                      />
+                    );
+                  }
+                  if (viewingItem.media_url) {
+                    return (
+                      <iframe
+                        src={viewingItem.media_url}
+                        title={viewingItem.title}
+                        className="personal-viewer-iframe"
+                      />
+                    );
+                  }
+                  return (
+                    <div style={{ textAlign: "center", color: "var(--ink-soft)" }}>
+                      <FileText size={48} style={{ opacity: 0.5, margin: "0 auto 12px" }} />
+                      <p>No document URL attached.</p>
+                    </div>
+                  );
+                })()}
+
+                {/* 2. Text Document / Note View */}
+                {(viewingItem.type === "text" || viewingItem.type === "note") && (
+                  <div className="personal-viewer-text-box">
+                    <pre className="personal-viewer-pre">
+                      {viewingItem.content || "Empty text note"}
+                    </pre>
+                  </div>
+                )}
+
+                {/* 3. Photo / Image View */}
+                {(viewingItem.type === "photo" || viewingItem.type === "image") && (
+                  <div className="personal-viewer-img-wrap">
+                    <img src={toImageUrl(viewingItem.media_url)} alt={viewingItem.title} className="personal-viewer-img" />
+                  </div>
+                )}
+
+                {/* 4. Video View */}
+                {viewingItem.type === "video" && (
+                  <div className="personal-viewer-video-wrap">
+                    <video src={viewingItem.media_url} controls autoPlay className="personal-viewer-video" />
+                  </div>
+                )}
+
+                {/* 5. Audio View */}
+                {viewingItem.type === "audio" && (
+                  <div className="personal-viewer-audio-wrap">
+                    <Music size={54} color="var(--accent)" />
+                    <h4 style={{ margin: "0 0 12px" }}>{viewingItem.title}</h4>
+                    <audio src={viewingItem.media_url} controls autoPlay style={{ width: "100%", maxWidth: "480px" }} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==========================================================================
+            IN-PLACE TEXT & ITEM EDITOR MODAL
+            ========================================================================== */}
         {editorOpen && (
           <div className="adm-modal-overlay" style={{
             position: "fixed",
