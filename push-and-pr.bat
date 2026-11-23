@@ -17,6 +17,10 @@ echo 3. Pushing main branch...
 git push origin main
 echo.
 
+echo 4. Pushing release tags (v1.1.0)...
+git push origin --tags
+echo.
+
 if %ERRORLEVEL% equ 0 (
     echo [SUCCESS] Branches pushed to GitHub successfully!
     echo Opening Pull Request page in your browser...
