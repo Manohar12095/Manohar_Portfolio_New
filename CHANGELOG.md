@@ -215,6 +215,7 @@ Security alerts are monitored in real time and categorized into a strict 3-tier 
 ## 4. Chronological Version Changelog
 
 ### Version 1.0.0 — Official Production Release (Current)
+- **Native Cloud Media Storage & Direct Upload Suite**: Implemented Supabase Storage `portfolio-media` public bucket and `src/lib/cloudStorage.js` service, eliminating reliance on external Google Apps Script web apps. Enabled direct drag-and-drop and 1-click uploads for all photos (JPG, PNG, WebP, GIF, AVIF) and videos (MP4, WebM, MOV) with instant CDN delivery. Added direct upload buttons across all admin media fields and Personal Space editor modal, while maintaining seamless Google Drive integration.
 - **Personal Space Modal Stacking & Database Schema Patch**: Portalled both document preview and note editor modals to `document.body` via React `createPortal` with `z-index: 999999`, resolving stacking context issues where the global navbar overlapped modal headers. Added `category` column to `personal_items` table in Supabase PostgreSQL with schema cache reload and defensive client-side fallback handling.
 - **Journey**: Implemented natural aspect ratio frames (`max-height: 440px`, `object-fit: contain`) so complete collage photos and group images display fully without clipping.
 - **Admin Sidebar**: Added independent scrollable navigation (`.adm-nav`) with `max-height: calc(100vh - 100px)` and thin scrollbars, enabling easy access to all 18 tabs.

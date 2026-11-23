@@ -6,6 +6,7 @@
    unless "Remember on this device" is ticked. */
 
 import { useSyncExternalStore } from "react";
+import { uploadToCloudStorage, listCloudStorageFiles } from "../lib/cloudStorage";
 
 const STORE_KEY = "portfolio.drive.v1";
 
@@ -165,8 +166,35 @@ export async function connect(config) {
 }
 
 export async function listFiles(config) {
-  const res = await call(config, { action: "list" }, { timeout: 60000 });
-  files = { folder: res.folder, files: res.files || [], total: res.total ?? (res.files || []).length, at: Date.now() };
+  let driveFiles = [];
+  let driveFolder = null;
+  let driveTotal = 0;
+
+  if (isConnected(config)) {
+    try {
+      const res = await call(config, { action: "list" }, { timeout: 60000 });
+      driveFiles = res.files || [];
+      driveFolder = res.folder;
+      driveTotal = res.total ?? driveFiles.length;
+    } catch (err) {
+      console.warn("Drive listing failed (showing Cloud Media):", err.message);
+    }
+  }
+
+  let cloudFiles = [];
+  try {
+    cloudFiles = await listCloudStorageFiles("uploads");
+  } catch (err) {
+    console.warn("Cloud storage listing error:", err.message);
+  }
+
+  const combined = [...cloudFiles, ...driveFiles];
+  files = {
+    folder: driveFolder || { name: "Cloud Media Storage" },
+    files: combined,
+    total: combined.length,
+    at: Date.now()
+  };
   emit();
   return files;
 }
@@ -220,19 +248,50 @@ async function prepareImage(file) {
 export const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime";
 const OK_TYPES = new Set(ACCEPT.split(","));
 
-export async function uploadFile(config, file, { onProgress, maxBytes = 20 * 1024 * 1024 } = {}) {
-  if (!OK_TYPES.has(file.type)) throw new DriveError(`“${file.name}” is not a supported type. Use JPG, PNG, WebP, GIF, AVIF, MP4, WebM or MOV.`, "bad-type");
+export async function uploadFile(config, file, { onProgress, maxBytes = 50 * 1024 * 1024 } = {}) {
+  if (!OK_TYPES.has(file.type)) {
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      throw new DriveError(`“${file.name}” is not a supported type. Use JPG, PNG, WebP, GIF, AVIF, MP4, WebM or MOV.`, "bad-type");
+    }
+  }
+
   const prepared = file.type.startsWith("image/") ? await prepareImage(file) : file;
   if (prepared.size > maxBytes) {
-    throw new DriveError(`“${file.name}” is ${(prepared.size / 1048576).toFixed(1)} MB. The limit here is ${Math.round(maxBytes / 1048576)} MB. Put big videos in the Drive folder yourself, then refresh.`, "too-big");
+    throw new DriveError(`“${file.name}” is ${(prepared.size / 1048576).toFixed(1)} MB. The limit is ${Math.round(maxBytes / 1048576)} MB.`, "too-big");
   }
-  const data = await toBase64(prepared);
-  const res = await call(config, { action: "upload", name: prepared.name, mime: prepared.type, data }, { onProgress, timeout: 300000 });
-  if (files) {
-    files = { ...files, files: [res.file, ...files.files.filter((f) => f.id !== res.file.id)], total: files.total + 1 };
-    emit();
+
+  // 1. If Google Drive is configured, try Google Drive first
+  if (isConnected(config)) {
+    try {
+      const data = await toBase64(prepared);
+      const res = await call(config, { action: "upload", name: prepared.name, mime: prepared.type, data }, { onProgress, timeout: 300000 });
+      if (files) {
+        files = { ...files, files: [res.file, ...files.files.filter((f) => f.id !== res.file.id)], total: files.total + 1 };
+        emit();
+      }
+      return { ...res.file, shared: res.shared !== false };
+    } catch (driveErr) {
+      console.warn("Google Drive upload failed, falling back to Cloud Storage:", driveErr.message);
+    }
   }
-  return { ...res.file, shared: res.shared !== false };
+
+  // 2. Direct Supabase Cloud Storage (Instant & High-Speed CDN)
+  try {
+    onProgress?.(0.3);
+    const cloudFile = await uploadToCloudStorage(prepared, "uploads");
+    onProgress?.(1);
+    if (files) {
+      files = {
+        ...files,
+        files: [cloudFile, ...(files.files || []).filter((f) => f.id !== cloudFile.id)],
+        total: (files.total || 0) + 1
+      };
+      emit();
+    }
+    return cloudFile;
+  } catch (cloudErr) {
+    throw new DriveError(`Upload failed: ${cloudErr.message}`, "upload-failed");
+  }
 }
 
 /* --------------------------- matching files to cards -------------------------- */

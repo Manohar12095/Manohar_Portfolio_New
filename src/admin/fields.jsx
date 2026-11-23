@@ -1,9 +1,10 @@
 import { useEffect, useId, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, Cloud, Copy, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Cloud, Copy, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 import { HEX } from "../lib/color";
 import { parseVideo, safeUrl, toImageUrl, videoLabel } from "../lib/url";
 import { slugify } from "../lib/shape";
 import { MediaPicker } from "./MediaLibrary";
+import { uploadToCloudStorage } from "../lib/cloudStorage";
 
 /* Generic form building blocks. Every editor screen is described as data in
    schemas.js and drawn by <SchemaForm>, so adding a field is a one-line change. */
@@ -64,13 +65,31 @@ function MediaField({ field, value, onChange }) {
   useEffect(() => setImgErr(false), [url]);
   const isDrive = /drive\.google\.com|docs\.google\.com/.test(url);
   const [picking, setPicking] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleDirectUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await uploadToCloudStorage(file, kind === "video" ? "videos" : "images");
+      if (res?.url) {
+        onChange(res.url);
+      }
+    } catch (err) {
+      alert("Upload failed: " + err.message);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   let help = field.help;
   if (!help) {
     help =
       kind === "image"
-        ? "Paste a link (Google Drive share links work) or a path like /images/photo.jpg."
-        : "Paste a .mp4/.webm link, a YouTube link, a Google Drive link, or a path like /videos/clip.mp4.";
+        ? "Upload directly from your computer, choose from Media Library, or paste any direct/Drive link."
+        : "Upload video directly, choose from Media Library, or paste any .mp4/.webm/YouTube link.";
   }
   if (isDrive) help = "Google Drive link detected. It is converted automatically. Make sure sharing is set to “Anyone with the link”.";
 
@@ -97,9 +116,25 @@ function MediaField({ field, value, onChange }) {
           )}
         </div>
       </div>
-      <button type="button" className="adm-btn adm-btn-sm adm-media-pick" onClick={() => setPicking(true)}>
-        <Cloud size={15} aria-hidden="true" /> Choose from Drive
-      </button>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
+        <label
+          className="adm-btn adm-btn-sm adm-btn-primary"
+          style={{ cursor: uploading ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
+        >
+          {uploading ? <Loader2 size={14} className="adm-spin" /> : <Upload size={14} />}
+          {uploading ? "Uploading…" : kind === "image" ? "Upload Photo" : "Upload Video"}
+          <input
+            type="file"
+            accept={kind === "image" ? "image/jpeg,image/png,image/webp,image/gif,image/avif" : "video/mp4,video/webm,video/quicktime"}
+            hidden
+            disabled={uploading}
+            onChange={handleDirectUpload}
+          />
+        </label>
+        <button type="button" className="adm-btn adm-btn-sm adm-media-pick" onClick={() => setPicking(true)}>
+          <Cloud size={15} aria-hidden="true" /> Media Library
+        </button>
+      </div>
       {picking && (
         <MediaPicker
           kind={kind}

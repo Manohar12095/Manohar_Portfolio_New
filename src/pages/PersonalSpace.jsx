@@ -5,13 +5,14 @@ import {
   Lock, ArrowLeft, Plus, Image, Video, FileText, Award, Eye, 
   Trash2, ExternalLink, ShieldCheck, Sparkles, Calendar, Heart,
   Search, Music, Edit3, X, Check, Save, File, RefreshCw, SlidersHorizontal,
-  Download, FileCheck, Copy
+  Download, FileCheck, Copy, Upload, Loader2
 } from "lucide-react";
 import { getAdapter } from "../data/store";
 import { isSessionActive } from "../admin/auth";
 import { toImageUrl } from "../lib/url";
 import SmartImage from "../components/SmartImage";
 import VideoSurface from "../components/VideoSurface";
+import { uploadToCloudStorage } from "../lib/cloudStorage";
 
 function extractDriveId(url) {
   if (!url) return null;
@@ -46,6 +47,7 @@ export default function PersonalSpace() {
   });
   const [editorBusy, setEditorBusy] = useState(false);
   const [editorMsg, setEditorMsg] = useState("");
+  const [mediaUploading, setMediaUploading] = useState(false);
 
   const navigate = useNavigate();
   const adapter = getAdapter();
@@ -1073,23 +1075,57 @@ export default function PersonalSpace() {
                 {/* Optional Media Link */}
                 <div>
                   <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "6px" }}>
-                    Media / File Link (Optional - Google Drive link or direct URL)
+                    Media / File Link (Optional - Google Drive link, direct URL, or upload from computer)
                   </label>
-                  <input
-                    type="text"
-                    placeholder="https://drive.google.com/file/d/... or direct media link"
-                    value={editorForm.media_url}
-                    onChange={(e) => setEditorForm({ ...editorForm, media_url: e.target.value })}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      borderRadius: "8px",
-                      border: "1px solid var(--border)",
-                      background: "var(--bg)",
-                      color: "var(--ink)",
-                      fontSize: "13.5px"
-                    }}
-                  />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/file/d/... or direct media link"
+                      value={editorForm.media_url}
+                      onChange={(e) => setEditorForm({ ...editorForm, media_url: e.target.value })}
+                      style={{
+                        flex: 1,
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg)",
+                        color: "var(--ink)",
+                        fontSize: "13.5px"
+                      }}
+                    />
+                    <label
+                      className="btn btn-outline btn-sm"
+                      style={{ cursor: mediaUploading ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap" }}
+                    >
+                      {mediaUploading ? <Loader2 size={14} className="adm-spin" /> : <Upload size={14} />}
+                      {mediaUploading ? "Uploading…" : "Upload File"}
+                      <input
+                        type="file"
+                        hidden
+                        disabled={mediaUploading}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setMediaUploading(true);
+                          try {
+                            const res = await uploadToCloudStorage(file, "personal");
+                            if (res?.url) {
+                              setEditorForm((prev) => ({
+                                ...prev,
+                                media_url: res.url,
+                                title: prev.title || file.name.replace(/\.[^/.]+$/, "")
+                              }));
+                            }
+                          } catch (err) {
+                            alert("Upload error: " + err.message);
+                          } finally {
+                            setMediaUploading(false);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}>

@@ -123,12 +123,13 @@ function ConnectPanel() {
 
 function Thumb({ file }) {
   const [bad, setBad] = useState(false);
-  return bad ? (
+  const src = file.url || (file.id && !file.id.startsWith("uploads/") && !file.id.startsWith("images/") ? driveThumbUrl(file.id, 320) : file.url);
+  return bad || !src ? (
     <span className="adm-drv-ph">
       <Film size={22} aria-hidden="true" />
     </span>
   ) : (
-    <img src={driveThumbUrl(file.id, 320)} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBad(true)} />
+    <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBad(true)} />
   );
 }
 
@@ -159,9 +160,8 @@ function Library({ kind = "all", onPick }) {
   }, [cfg]);
 
   useEffect(() => {
-    if (isConnected(cfg) && !listing) refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cfg.url, cfg.key]);
+    refresh();
+  }, [refresh]);
 
   const shown = useMemo(() => (listing?.files || []).filter((f) => filter === "all" || f.kind === filter), [listing, filter]);
 
@@ -176,14 +176,13 @@ function Library({ kind = "all", onPick }) {
       patch(it.id, { state: "busy" });
       try {
         const done = await uploadFile(cfg, it.file, { onProgress: (p) => patch(it.id, { progress: p }) });
+        const finalUrl = done.url || driveViewUrl(done.id);
         patch(it.id, {
           state: done.shared ? "ok" : "warn",
           progress: 1,
-          msg: done.shared
-            ? "Uploaded"
-            : "Uploaded, but Google would not make it public. Share it in Drive as “Anyone with the link”, or visitors will not see it.",
+          msg: done.isCloudFallback ? "Uploaded to Cloud Storage" : "Uploaded",
         });
-        if (onPick && picked.length === 1 && done.shared) onPick(driveViewUrl(done.id));
+        if (onPick && picked.length === 1 && (done.shared || done.url)) onPick(finalUrl);
       } catch (x) {
         patch(it.id, { state: "err", msg: x.message });
       }
@@ -192,20 +191,13 @@ function Library({ kind = "all", onPick }) {
 
   async function copy(f) {
     try {
-      await navigator.clipboard.writeText(driveViewUrl(f.id));
+      const link = f.url || driveViewUrl(f.id);
+      await navigator.clipboard.writeText(link);
       setCopied(f.id);
       setTimeout(() => setCopied((c) => (c === f.id ? "" : c)), 1600);
     } catch {
       setErr("This browser blocked copying.");
     }
-  }
-
-  if (!isConnected(cfg)) {
-    return (
-      <p className="adm-empty">
-        Drive is not connected yet. Open the <Link to="/admin#media">Media</Link> tab to connect it.
-      </p>
-    );
   }
 
   return (
@@ -285,7 +277,7 @@ function Library({ kind = "all", onPick }) {
             <button
               type="button"
               className="adm-drv-item"
-              onClick={() => (onPick ? onPick(driveViewUrl(f.id)) : copy(f))}
+              onClick={() => (onPick ? onPick(f.url || driveViewUrl(f.id)) : copy(f))}
               aria-label={onPick ? `Use ${f.name}` : `Copy link to ${f.name}`}
             >
               <span className="adm-drv-img">
@@ -340,7 +332,7 @@ export function MediaPicker({ kind, onPick, onClose }) {
     else if (!e.shiftKey && document.activeElement === last) (e.preventDefault(), first.focus());
   }
 
-  const title = kind === "video" ? "Choose a video from Drive" : "Choose a photo from Drive";
+  const title = kind === "video" ? "Choose or Upload Video" : "Choose or Upload Photo";
   return createPortal(
     <div className="adm-picker-dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="adm-modal-card" role="dialog" aria-modal="true" aria-labelledby="adm-pick-title" tabIndex={-1} ref={ref} onKeyDown={onKey}>
@@ -493,26 +485,35 @@ export default function MediaTab() {
   const connected = isConnected(cfg);
   return (
     <>
+      <section className="adm-block" aria-label="Media library">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+          <div>
+            <h3 className="adm-block-title" style={{ margin: 0 }}>Media Library</h3>
+            <p className="adm-help" style={{ margin: "4px 0 0" }}>
+              Upload and manage photos and videos stored in high-speed cloud storage.
+            </p>
+          </div>
+          <span style={{ fontSize: "12px", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", padding: "4px 10px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
+            <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#10b981" }} /> Cloud Storage Ready
+          </span>
+        </div>
+        <Library />
+      </section>
+
+      {connected && (
+        <section className="adm-block" aria-label="Match files to cards">
+          <h3 className="adm-block-title">Match files to Journey and Project cards</h3>
+          <MatchPanel />
+        </section>
+      )}
+
       <section className="adm-block" aria-label="Google Drive connection">
-        <h3 className="adm-block-title">Google Drive connection</h3>
+        <h3 className="adm-block-title">Google Drive Connection (Optional)</h3>
         <ConnectPanel />
         <p className="adm-note adm-drv-note">
-          <AlertTriangle size={15} aria-hidden="true" /> The admin key and the passcode only keep casual visitors out. Files you upload become viewable by
-          anyone who has the link, which is what lets your website show them.
+          <AlertTriangle size={15} aria-hidden="true" /> Optional: You can link a Google Drive folder if you have media hosted in Drive. The built-in Cloud Storage works automatically without any setup.
         </p>
       </section>
-      {connected && (
-        <>
-          <section className="adm-block" aria-label="Media library">
-            <h3 className="adm-block-title">Media library</h3>
-            <Library />
-          </section>
-          <section className="adm-block" aria-label="Match files to cards">
-            <h3 className="adm-block-title">Match files to Journey and Project cards</h3>
-            <MatchPanel />
-          </section>
-        </>
-      )}
     </>
   );
 }
