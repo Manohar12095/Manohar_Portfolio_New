@@ -39,18 +39,22 @@ function ScrollManager() {
 function PublicSite() {
   const [visitorName, setVisitorName] = useState(() => getStoredVisitorName());
 
+  // Strict Login Gate: Do not mount any site pages, navigation, or interactive routes until visitor enters their name!
+  if (!visitorName) {
+    return (
+      <>
+        <SceneBackground />
+        <WelcomeGate onEnter={(name) => setVisitorName(name)} />
+      </>
+    );
+  }
+
   return (
     <>
       <a className="skip" href="#main">
         Skip to content
       </a>
       <SceneBackground />
-
-      {/* Visitor Welcome Gate if name not yet entered */}
-      {!visitorName && (
-        <WelcomeGate onEnter={(name) => setVisitorName(name)} />
-      )}
-
       <Nav />
       <ScrollManager />
       <div id="main" className="page">
