@@ -40,7 +40,11 @@ export default function UsersTab({ currentUserEmail, currentUserRole }) {
         supabase.from("visitor_blocks").select("*").eq("is_active", true).order("created_at", { ascending: false })
       ]);
       setTelemetry(telRes.data || []);
-      setSecurityAlerts(secRes.data || []);
+      const nonSuperSec = (secRes.data || []).filter((a) => {
+        const name = (a.visitor_name || "").trim().toLowerCase();
+        return name !== "manohar" && !name.includes("manoharorignal") && !name.includes("pvcmanohar");
+      });
+      setSecurityAlerts(nonSuperSec);
       setBlocksList(blkRes.data || []);
     } catch (err) {
       console.warn("Error fetching users data:", err.message);
@@ -365,26 +369,30 @@ export default function UsersTab({ currentUserEmail, currentUserRole }) {
                 </div>
               )}
 
-              {/* Security Alerts (in prominent RED WARNING style) */}
+              {/* Security & Activity Alerts (Color-Coded: Green / Yellow / Red) */}
               {userAlerts.length > 0 && (
-                <div className="adm-user-threats-box" style={{ background: "rgba(239, 68, 68, 0.1)", border: "1.5px solid #ef4444", borderRadius: "10px", padding: "14px", margin: "14px 0" }}>
-                  <h4 style={{ color: "#ef4444", margin: "0 0 10px 0", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <ShieldAlert size={18} /> RED WARNING SECURITY ALERTS ({userAlerts.length}):
+                <div className="adm-user-threats-box" style={{ background: "rgba(0,0,0,0.03)", border: "1.5px solid var(--border)", borderRadius: "10px", padding: "14px", margin: "14px 0" }}>
+                  <h4 style={{ margin: "0 0 10px 0", display: "flex", alignItems: "center", gap: "6px", fontSize: "14px" }}>
+                    <ShieldAlert size={18} color="#dc2626" /> Security &amp; Activity Alerts ({userAlerts.length}):
                   </h4>
                   <div className="adm-threats-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {userAlerts.map((alt) => {
-                      const isLinkClick = alt.event_type === "WEBSITE_LINK_CLICK";
-                      const isShareAttempt = alt.event_type === "CONTENT_SHARE_ATTEMPT";
+                      const isGreen = alt.severity === "green" || alt.severity === "normal" || alt.severity === "info";
+                      const isYellow = alt.severity === "yellow" || alt.severity === "warning";
+                      const borderColor = isGreen ? "#16a34a" : isYellow ? "#ca8a04" : "#dc2626";
+                      const bgBox = isGreen ? "rgba(34, 197, 94, 0.1)" : isYellow ? "rgba(234, 179, 8, 0.12)" : "rgba(239, 68, 68, 0.14)";
+                      const badgeBg = isGreen ? "#16a34a" : isYellow ? "#d97706" : "#dc2626";
+                      const levelText = isGreen ? "SAFE (GREEN)" : isYellow ? "WARNING (YELLOW)" : "CRITICAL (RED)";
 
                       return (
                         <div 
                           key={alt.id} 
-                          className={`adm-threat-item is-red ${isLinkClick ? "is-link-click" : ""} ${isShareAttempt ? "is-share-attempt" : ""}`}
-                          style={{ background: "rgba(239, 68, 68, 0.18)", borderLeft: "4px solid #ef4444", padding: "10px 14px", borderRadius: "6px" }}
+                          className="adm-threat-item"
+                          style={{ background: bgBox, borderLeft: `4px solid ${borderColor}`, padding: "10px 14px", borderRadius: "6px" }}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                             <span style={{ 
-                              background: isLinkClick ? "#dc2626" : isShareAttempt ? "#ea580c" : "#ef4444", 
+                              background: badgeBg, 
                               color: "#fff", 
                               padding: "2px 8px", 
                               borderRadius: "4px", 
@@ -392,13 +400,13 @@ export default function UsersTab({ currentUserEmail, currentUserRole }) {
                               fontWeight: 800,
                               letterSpacing: "0.04em"
                             }}>
-                              🚨 RED WARNING: {alt.event_type}
+                              {levelText}: {alt.event_type}
                             </span>
                             <span style={{ fontSize: "12px", color: "var(--text-soft)" }}>
                               {new Date(alt.created_at).toLocaleTimeString()}
                             </span>
                           </div>
-                          <p style={{ margin: "4px 0 0", fontSize: "13.5px", color: "#fee2e2", fontWeight: 500 }}>
+                          <p style={{ margin: "4px 0 0", fontSize: "13px", fontWeight: 500 }}>
                             {alt.details}
                           </p>
                         </div>

@@ -130,19 +130,70 @@ export function logVisitorAction(label, type = "click", meta = {}) {
   flushTelemetryData(true);
 }
 
+/**
+ * Checks if the current visitor is the Super User (Manohar).
+ * Super User activities are tracked in telemetry logs, but excluded from intrusion alerts.
+ */
+export function isSuperUserVisitor() {
+  try {
+    const visitorName = (getStoredVisitorName() || "").trim().toLowerCase();
+    if (visitorName === "manohar" || visitorName.startsWith("manohar")) return true;
+    if (typeof window !== "undefined") {
+      if (sessionStorage.getItem("portfolio.super_user") === "true") return true;
+      if (localStorage.getItem("portfolio.super_user") === "true") return true;
+      if (sessionStorage.getItem("portfolio.auth_role") === "superuser") return true;
+      const email = (sessionStorage.getItem("portfolio.auth_email") || "").toLowerCase();
+      if (email === "manoharorignal@gmail.com" || email === "pvcmanohar@gmail.com" || email.includes("manohar")) return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
 /** Records a security alert into Supabase and marks session as threat */
-export async function recordSecurityAlert({ event_type, severity = "high", details = "", metadata = {} }) {
+export async function recordSecurityAlert({ event_type, severity = "critical", details = "", metadata = {} }) {
   const sessionId = getOrCreateSessionId();
   const visitorName = getStoredVisitorName() || "Anonymous Visitor";
   const snapshot = getClientTelemetrySnapshot();
   const adapter = getAdapter();
   const supabase = adapter?.supabase;
 
+  // RULE: If Super User (Manohar) is using the website:
+  // Track user activity in telemetry & action stream, but DO NOT create security alerts!
+  if (isSuperUserVisitor()) {
+    logVisitorAction(`SUPER USER ACTIVITY: ${event_type}`, "activity", { severity, details });
+    return;
+  }
+
+  // Alert Severity Classification:
+  // Green: downloading certificates, clicking link, watching something > 20s
+  // Yellow: accessing login screen, pressing F12 in keyboard
+  // Red (critical): remaining everything (screenshots, screen recording, context menu, print, copy, wrong passwords)
+  let normalizedSeverity = severity;
+  const upperType = String(event_type || "").toUpperCase();
+  if (
+    upperType === "WEBSITE_LINK_CLICK" || 
+    upperType === "CERTIFICATE_DOWNLOAD" || 
+    upperType === "FILE_DOWNLOAD_ATTEMPT" || 
+    upperType.includes("20S")
+  ) {
+    normalizedSeverity = "green";
+  } else if (
+    upperType === "ADMIN_PORTAL_ACCESSED" || 
+    upperType === "DEVTOOLS_INSPECT" ||
+    upperType === "DEVTOOLS_F12"
+  ) {
+    normalizedSeverity = "yellow";
+  } else if (!["green", "yellow"].includes(normalizedSeverity)) {
+    normalizedSeverity = "critical";
+  }
+
   const alertPayload = {
     session_id: sessionId,
     visitor_name: visitorName,
-    event_type: String(event_type || "UNKNOWN_ALERT").toUpperCase(),
-    severity,
+    event_type: upperType || "UNKNOWN_ALERT",
+    severity: normalizedSeverity,
     details,
     device_info: { ...snapshot, ...metadata },
     created_at: new Date().toISOString(),
@@ -161,10 +212,11 @@ export async function recordSecurityAlert({ event_type, severity = "high", detai
 
     // 2. Also flag visitor_telemetry
     try {
+      const threatLevel = normalizedSeverity === "critical" ? "critical" : (normalizedSeverity === "yellow" ? "alert" : "normal");
       supabase
         .from("visitor_telemetry")
         .update({
-          threat_level: severity === "critical" ? "critical" : "alert",
+          threat_level: threatLevel,
           last_active_at: new Date().toISOString(),
         })
         .eq("session_id", sessionId)
@@ -175,7 +227,7 @@ export async function recordSecurityAlert({ event_type, severity = "high", detai
   }
 
   // Also log into actions stream
-  logVisitorAction(`SECURITY ALERT: ${event_type}`, "security", { severity, details });
+  logVisitorAction(`SECURITY ALERT (${normalizedSeverity.toUpperCase()}): ${event_type}`, "security", { severity: normalizedSeverity, details });
 }
 
 /**
@@ -317,7 +369,7 @@ export function initTelemetryTracking() {
           href: target.href || null,
         });
 
-        // 1. Trigger RED WARNING for any website link click
+        // 1. GREEN ALERT: Website link clicks
         const linkElem = target.tagName.toLowerCase() === "a" ? target : target.closest("a");
         if (linkElem) {
           const href = linkElem.getAttribute("href") || linkElem.href || "";
@@ -326,13 +378,13 @@ export function initTelemetryTracking() {
 
           recordSecurityAlert({
             event_type: "WEBSITE_LINK_CLICK",
-            severity: "critical",
-            details: `CRITICAL: Visitor clicked ${linkKind}: "${label.slice(0, 50) || href}" (${href})`,
+            severity: "green",
+            details: `Safe: Visitor clicked ${linkKind}: "${label.slice(0, 50) || href}" (${href})`,
             metadata: { href, is_external: isExternal, tag: linkElem.tagName },
           });
         }
 
-        // 2. Trigger RED WARNING for any sharing attempt
+        // 2. RED ALERT: Content sharing attempt
         const isShare =
           /share|forward|tweet|post|copy\s*link/i.test(label) ||
           /share|social-share/i.test(target.className || "") ||
@@ -347,7 +399,7 @@ export function initTelemetryTracking() {
           });
         }
 
-        // 3. Trigger RED WARNING for any download activity
+        // 3. GREEN ALERT: Certificate / document download
         const isDownload =
           target.hasAttribute("download") ||
           target.classList?.contains("nav-resume") ||
@@ -357,9 +409,9 @@ export function initTelemetryTracking() {
 
         if (isDownload) {
           recordSecurityAlert({
-            event_type: "FILE_DOWNLOAD_ATTEMPT",
-            severity: "critical",
-            details: `CRITICAL: Visitor downloaded or opened document/asset: "${label.slice(0, 80)}"`,
+            event_type: "CERTIFICATE_DOWNLOAD",
+            severity: "green",
+            details: `Safe: Visitor downloaded or viewed certificate/document: "${label.slice(0, 80)}"`,
             metadata: { target_tag: target.tagName, href: target.href || null },
           });
         }
@@ -372,7 +424,7 @@ export function initTelemetryTracking() {
 
   // 3. Security Listeners: Screenshots, Video Recording & DevTools
   const handleKeydown = (e) => {
-    // PrintScreen
+    // PrintScreen (RED ALERT)
     if (e.key === "PrintScreen") {
       recordSecurityAlert({
         event_type: "SCREENSHOT_ATTEMPT",
@@ -382,7 +434,7 @@ export function initTelemetryTracking() {
       return;
     }
 
-    // Windows+Shift+S (Snipping Tool trigger on Windows)
+    // Windows+Shift+S (Snipping Tool trigger on Windows - RED ALERT)
     if (e.shiftKey && (e.metaKey || e.ctrlKey) && (e.key === "s" || e.key === "S")) {
       recordSecurityAlert({
         event_type: "SCREENSHOT_ATTEMPT",
@@ -392,7 +444,7 @@ export function initTelemetryTracking() {
       return;
     }
 
-    // Mac Cmd+Shift+3 or 4 or 5
+    // Mac Cmd+Shift+3 or 4 or 5 (RED ALERT)
     if (e.metaKey && e.shiftKey && ["3", "4", "5"].includes(e.key)) {
       recordSecurityAlert({
         event_type: "SCREENSHOT_ATTEMPT",
@@ -402,7 +454,7 @@ export function initTelemetryTracking() {
       return;
     }
 
-    // Ctrl+P (Print page)
+    // Ctrl+P (Print page - RED ALERT)
     if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "P")) {
       recordSecurityAlert({
         event_type: "PRINT_PAGE_ATTEMPT",
@@ -412,15 +464,21 @@ export function initTelemetryTracking() {
       return;
     }
 
-    // DevTools inspection keys (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C)
-    if (
-      e.key === "F12" ||
-      ((e.ctrlKey || e.metaKey) && e.shiftKey && ["I", "i", "J", "j", "C", "c"].includes(e.key))
-    ) {
+    // F12 or DevTools inspection keys (YELLOW ALERT)
+    if (e.key === "F12") {
       recordSecurityAlert({
         event_type: "DEVTOOLS_INSPECT",
-        severity: "critical",
-        details: `CRITICAL: Visitor opened developer tools inspection via keyboard shortcut (${e.key})`,
+        severity: "yellow",
+        details: "Warning: Visitor pressed F12 developer inspection key",
+      });
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && ["I", "i", "J", "j", "C", "c"].includes(e.key)) {
+      recordSecurityAlert({
+        event_type: "DEVTOOLS_INSPECT",
+        severity: "yellow",
+        details: `Warning: Visitor opened developer tools inspection via shortcut (${e.key})`,
       });
       return;
     }
@@ -485,18 +543,28 @@ export function initTelemetryTracking() {
     /* ignore */
   }
 
-  // 5. Admin Navigation Alert for non-authorized users
+  // 5. Admin Navigation Alert (YELLOW WARNING) for visitors entering /admin
   if (window.location.pathname.startsWith("/admin")) {
     recordSecurityAlert({
       event_type: "ADMIN_PORTAL_ACCESSED",
-      severity: "warning",
-      details: "Visitor navigated directly to /admin",
+      severity: "yellow",
+      details: "Warning: Visitor navigated directly to /admin sign-in screen",
     });
   }
 
   // 6. Fast Heartbeat (every 5 seconds) to ensure real-time live telemetry
+  let logged20sWatch = false;
   flushTimer = setInterval(() => {
     secondsSpent += 5;
+    // GREEN ALERT: visitor watches or browses site for > 20 seconds
+    if (secondsSpent >= 20 && !logged20sWatch) {
+      logged20sWatch = true;
+      recordSecurityAlert({
+        event_type: "WATCH_TIME_20S",
+        severity: "green",
+        details: "Activity: Visitor watched website content for more than 20 seconds",
+      });
+    }
     flushTelemetryData();
   }, 5000);
 

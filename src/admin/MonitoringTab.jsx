@@ -3,6 +3,8 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Compass,
   Database,
@@ -61,6 +63,7 @@ export default function MonitoringTab() {
   const [telemetry, setTelemetry] = useState([]);
   const [messages, setMessages] = useState([]);
   const [securityAlerts, setSecurityAlerts] = useState([]);
+  const [alertsMinimized, setAlertsMinimized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -109,7 +112,14 @@ export default function MonitoringTab() {
         setDbHealth({ state: "connected", latencyMs: latency });
       }
       if (msgData) setMessages(msgData);
-      if (alertData) setSecurityAlerts(alertData);
+      if (alertData) {
+        // Exclude Super User (Manohar) from intrusion alerts
+        const nonSuperAlerts = alertData.filter((a) => {
+          const name = (a.visitor_name || "").trim().toLowerCase();
+          return name !== "manohar" && !name.includes("manoharorignal") && !name.includes("pvcmanohar");
+        });
+        setSecurityAlerts(nonSuperAlerts);
+      }
     } catch (err) {
       setDbHealth({ state: "error", latencyMs: 0, error: err.message });
     } finally {
@@ -357,7 +367,7 @@ export default function MonitoringTab() {
         </div>
       </div>
 
-      {/* Real-time Security & Threat Alerts (RED COLOR) */}
+      {/* Real-time Security & Threat Alerts (RED / YELLOW / GREEN COLOR LEVELS) */}
       <div className="adm-block adm-security-block">
         <div className="adm-mon-section-head">
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -369,23 +379,57 @@ export default function MonitoringTab() {
                 🔴 Security Alerts &amp; Intrusion Detection ({securityAlerts.length})
               </h3>
               <p className="adm-help" style={{ margin: "3px 0 0", color: "#b91c1c" }}>
-                Real-time security alerts for admin portal entries, failed passwords, screenshot captures, screen recording, and unauthorized activities.
+                Color-coded security events: Green (Link clicks, cert downloads, &gt;20s watch), Yellow (Login screens, F12 inspect), Red (Screenshots, screen recording, tampering).
               </p>
             </div>
           </div>
-          {securityAlerts.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
               type="button"
-              className="adm-btn adm-btn-sm adm-btn-danger"
-              onClick={clearAllAlerts}
-              title="Clear all alerts"
+              className="adm-btn adm-btn-sm"
+              onClick={() => setAlertsMinimized(!alertsMinimized)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+              title={alertsMinimized ? "Expand security alerts table" : "Minimize security alerts table"}
             >
-              <Trash2 size={13} /> Clear alerts
+              {alertsMinimized ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+              {alertsMinimized ? "Expand" : "Minimize"}
             </button>
-          )}
+            {securityAlerts.length > 0 && (
+              <button
+                type="button"
+                className="adm-btn adm-btn-sm adm-btn-danger"
+                onClick={clearAllAlerts}
+                title="Clear all alerts"
+              >
+                <Trash2 size={13} /> Clear alerts
+              </button>
+            )}
+          </div>
         </div>
 
-        {securityAlerts.length === 0 ? (
+        {alertsMinimized ? (
+          <div style={{
+            padding: "12px 18px",
+            background: "rgba(220, 38, 38, 0.05)",
+            border: "1px dashed rgba(220, 38, 38, 0.3)",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: "12px"
+          }}>
+            <span style={{ fontSize: "13.5px", color: "#991b1b", fontWeight: 600 }}>
+              🛡️ Security Alerts section minimized ({securityAlerts.length} events logged). Click "Expand" to view the table.
+            </span>
+            <button
+              type="button"
+              className="adm-btn adm-btn-xs"
+              onClick={() => setAlertsMinimized(false)}
+            >
+              Expand table
+            </button>
+          </div>
+        ) : securityAlerts.length === 0 ? (
           <div className="adm-security-clean">
             <ShieldCheck size={30} className="adm-security-clean-icon" />
             <div>
@@ -409,37 +453,54 @@ export default function MonitoringTab() {
                 </tr>
               </thead>
               <tbody>
-                {securityAlerts.map((a) => (
-                  <tr key={a.id} className="adm-security-row">
-                    <td>
-                      <div className="adm-security-event-tag">
-                        <AlertTriangle size={15} />
-                        <strong>{a.event_type}</strong>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`adm-security-badge is-${a.severity}`}>
-                        {a.severity.toUpperCase()}
-                      </span>
-                    </td>
-                    <td>
-                      <strong style={{ color: "#991b1b" }}>{a.visitor_name || "Unknown"}</strong>
-                    </td>
-                    <td style={{ maxWidth: 340, wordBreak: "break-word", color: "#7f1d1d" }}>
-                      {a.details}
-                    </td>
-                    <td>
-                      <span className="adm-mon-subtext">
-                        {a.device_info?.os || "Unknown OS"} · {a.device_info?.browser || "Browser"}
-                      </span>
-                    </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <span title={new Date(a.created_at).toLocaleString()}>
-                        {timeAgo(a.created_at)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {securityAlerts.map((a) => {
+                  const isGreen = a.severity === "green" || a.severity === "normal" || a.severity === "info";
+                  const isYellow = a.severity === "yellow" || a.severity === "warning";
+                  const rowClass = isGreen
+                    ? "adm-security-row is-green-row"
+                    : isYellow
+                    ? "adm-security-row is-yellow-row"
+                    : "adm-security-row";
+                  const badgeClass = isGreen
+                    ? "adm-security-badge is-green"
+                    : isYellow
+                    ? "adm-security-badge is-yellow"
+                    : "adm-security-badge is-critical";
+                  const badgeLabel = isGreen ? "GREEN (SAFE)" : isYellow ? "YELLOW (WARNING)" : "RED (CRITICAL)";
+                  const tagColor = isGreen ? "#16a34a" : isYellow ? "#ca8a04" : "#b91c1c";
+
+                  return (
+                    <tr key={a.id} className={rowClass}>
+                      <td>
+                        <div className="adm-security-event-tag" style={{ color: tagColor }}>
+                          <AlertTriangle size={15} />
+                          <strong>{a.event_type}</strong>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={badgeClass}>
+                          {badgeLabel}
+                        </span>
+                      </td>
+                      <td>
+                        <strong style={{ color: tagColor }}>{a.visitor_name || "Unknown"}</strong>
+                      </td>
+                      <td style={{ maxWidth: 340, wordBreak: "break-word" }}>
+                        {a.details}
+                      </td>
+                      <td>
+                        <span className="adm-mon-subtext">
+                          {a.device_info?.os || "Unknown OS"} · {a.device_info?.browser || "Browser"}
+                        </span>
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <span title={new Date(a.created_at).toLocaleString()}>
+                          {timeAgo(a.created_at)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

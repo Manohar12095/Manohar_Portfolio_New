@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, Layers, FileText
 } from "lucide-react";
 import { getAdapter } from "../data/store";
-import { getOrCreateSessionId, getStoredVisitorName, logVisitorAction } from "../lib/telemetry";
+import { getOrCreateSessionId, getStoredVisitorName, logVisitorAction, recordSecurityAlert } from "../lib/telemetry";
 import CertificateCard from "../components/CertificateCard";
 import SmartImage from "../components/SmartImage";
 
@@ -125,6 +125,14 @@ export default function Certificates() {
     if (activeCert && viewStartTime.current) {
       const spent = Date.now() - viewStartTime.current;
       recordViewDuration(activeCert.id, spent);
+      // Trigger Green Activity Alert if visitor viewed certificate for > 20 seconds
+      if (spent >= 20000) {
+        recordSecurityAlert({
+          event_type: "WATCH_TIME_20S",
+          severity: "green",
+          details: `Safe: Visitor spent ${Math.round(spent / 1000)} seconds viewing certificate "${activeCert.title}"`,
+        });
+      }
     }
     setActiveCert(null);
     setActivePageIndex(0);
@@ -145,19 +153,70 @@ export default function Certificates() {
     return () => window.removeEventListener("keydown", onKey);
   }, [activeCert, isMultiPage, activePages.length]);
 
-  // Extract distinct categories
+  // Standard predefined tags requested: Medal, Awards, Digital Badges, Other Rewards
+  const PRIMARY_TAGS = ["Medal", "Awards", "Digital Badges", "Other Rewards"];
+
+  // Extract distinct categories + primary tags
   const categories = useMemo(() => {
     const set = new Set();
+    // Always include requested tags
+    PRIMARY_TAGS.forEach((t) => set.add(t));
     certificates.forEach((c) => {
       if (c.category) set.add(c.category);
+      if (Array.isArray(c.tags)) {
+        c.tags.forEach((t) => {
+          if (t && PRIMARY_TAGS.some((pt) => pt.toLowerCase() === t.toLowerCase())) {
+            set.add(t);
+          }
+        });
+      }
     });
-    return ["All", ...Array.from(set).sort()];
+    return ["All", "Certificate", ...PRIMARY_TAGS, ...Array.from(set).filter((c) => !PRIMARY_TAGS.includes(c) && c !== "Certificate").sort()];
   }, [certificates]);
+
+  // Helper to extract year
+  const getCertYear = (c) => {
+    if (c.year) return Number(c.year) || 0;
+    if (c.issue_date) {
+      const m = String(c.issue_date).match(/\b(20\d\d|19\d\d)\b/);
+      if (m) return Number(m[1]);
+    }
+    const text = `${c.title || ""} ${c.description || ""} ${c.category || ""}`;
+    const m = text.match(/\b(20\d\d|19\d\d)\b/);
+    if (m) return Number(m[1]);
+    if (c.created_at) return new Date(c.created_at).getFullYear();
+    return 0;
+  };
+
+  // Helper for Type priority order (Certificate > Medal > Award > Digital Badges > Other Rewards > etc)
+  const getCertTypeRank = (c) => {
+    const text = `${c.title || ""} ${c.category || ""} ${(c.tags || []).join(" ")}`.toLowerCase();
+    if (text.includes("certificate") || text.includes("completion") || text.includes("course") || text.includes("participation")) return 1;
+    if (text.includes("medal")) return 2;
+    if (text.includes("award") || text.includes("trophy") || text.includes("prize") || text.includes("winner")) return 3;
+    if (text.includes("badge") || text.includes("digital badge")) return 4;
+    if (text.includes("reward") || text.includes("honour") || text.includes("honor")) return 5;
+    return 6;
+  };
+
+  // Helper for multi-page certificate
+  const checkMultiPage = (c) => {
+    const p = Array.isArray(c.pages) ? c.pages.filter(Boolean) : [];
+    return p.length > 1 || Boolean(c.is_multipage) || /marksheet|semester|sem|curriculum|transcript|page/i.test(c.title || "");
+  };
 
   // Filter and sort certificates
   const filteredCerts = useMemo(() => {
     let list = certificates.filter((c) => {
-      const matchesCategory = selectedCategory === "All" || c.category === selectedCategory;
+      let matchesCategory = selectedCategory === "All";
+      if (!matchesCategory) {
+        const catLow = selectedCategory.toLowerCase();
+        const hasTag = Array.isArray(c.tags) && c.tags.some((t) => t.toLowerCase().includes(catLow));
+        const inCat = (c.category || "").toLowerCase().includes(catLow);
+        const inTitle = (c.title || "").toLowerCase().includes(catLow);
+        matchesCategory = inCat || hasTag || inTitle;
+      }
+
       const q = search.trim().toLowerCase();
       const matchesSearch =
         !q ||
@@ -168,7 +227,15 @@ export default function Certificates() {
       return matchesCategory && matchesSearch;
     });
 
-    if (sortBy === "title-asc") {
+    if (sortBy === "year-desc") {
+      list.sort((a, b) => getCertYear(b) - getCertYear(a));
+    } else if (sortBy === "year-asc") {
+      list.sort((a, b) => getCertYear(a) - getCertYear(b));
+    } else if (sortBy === "type") {
+      list.sort((a, b) => getCertTypeRank(a) - getCertTypeRank(b));
+    } else if (sortBy === "multipage") {
+      list.sort((a, b) => (checkMultiPage(b) ? 1 : 0) - (checkMultiPage(a) ? 1 : 0));
+    } else if (sortBy === "title-asc") {
       list.sort((a, b) => a.title.localeCompare(b.title));
     } else if (sortBy === "title-desc") {
       list.sort((a, b) => b.title.localeCompare(a.title));
@@ -235,6 +302,10 @@ export default function Certificates() {
                 aria-label="Sort certificates"
               >
                 <option value="default">Default Order</option>
+                <option value="year-desc">Year (Newest First)</option>
+                <option value="year-asc">Year (Oldest First)</option>
+                <option value="type">Type (Certificate &gt; Medal &gt; Award &gt; Badges &gt; Others)</option>
+                <option value="multipage">Multiple Pages Certificate</option>
                 <option value="title-asc">Title (A → Z)</option>
                 <option value="title-desc">Title (Z → A)</option>
                 <option value="category">Category</option>

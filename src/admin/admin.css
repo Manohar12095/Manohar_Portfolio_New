@@ -655,8 +655,27 @@
 .adm-nav {
   position: sticky;
   top: 84px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   gap: 2px;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+.adm-nav::-webkit-scrollbar {
+  width: 5px;
+}
+.adm-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.adm-nav::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 4px;
+}
+.adm-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.7);
 }
 .adm-nav a {
   display: flex;
@@ -2055,7 +2074,8 @@
   font-weight: 800;
   letter-spacing: 0.05em;
 }
-.adm-security-badge.is-critical {
+.adm-security-badge.is-critical,
+.adm-security-badge.is-red {
   background: #dc2626;
   color: #fff;
   box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
@@ -2064,9 +2084,36 @@
   background: #ef4444;
   color: #fff;
 }
-.adm-security-badge.is-warning {
+.adm-security-badge.is-warning,
+.adm-security-badge.is-yellow {
   background: #fef08a;
   color: #854d0e;
+  border: 1px solid #fde047;
+}
+.adm-security-badge.is-green,
+.adm-security-badge.is-info,
+.adm-security-badge.is-normal {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+.adm-security-row.is-green-row {
+  background: rgba(240, 253, 244, 0.55);
+}
+.adm-security-row.is-green-row:hover {
+  background: #dcfce7;
+}
+.adm-security-row.is-green-row td {
+  color: #166534 !important;
+}
+.adm-security-row.is-yellow-row {
+  background: rgba(254, 252, 232, 0.6);
+}
+.adm-security-row.is-yellow-row:hover {
+  background: #fef9c3;
+}
+.adm-security-row.is-yellow-row td {
+  color: #854d0e !important;
 }
 .is-threat-row {
   background: rgba(254, 242, 242, 0.6) !important;

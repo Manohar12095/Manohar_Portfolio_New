@@ -437,6 +437,10 @@ export default function CertificatesTab() {
                       onChange={(e) => setForm({ ...form, category: e.target.value })}
                     >
                       <option value="Academy">Academy</option>
+                      <option value="Medal">Medal</option>
+                      <option value="Awards">Awards</option>
+                      <option value="Digital Badges">Digital Badges</option>
+                      <option value="Other Rewards">Other Rewards</option>
                       <option value="Extra-Curricular">Extra-Curricular</option>
                       <option value="Internship">Internship</option>
                       <option value="NCC">NCC</option>
@@ -543,8 +547,26 @@ export default function CertificatesTab() {
                       type="text"
                       value={form.tags}
                       onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                      placeholder="hackathon, react, 1st prize"
+                      placeholder="Medal, Awards, Digital Badges, Other Rewards, hackathon"
                     />
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "6px" }}>
+                      <span style={{ fontSize: "11.5px", color: "var(--a-soft)" }}>Quick tags:</span>
+                      {["Medal", "Awards", "Digital Badges", "Other Rewards", "Certificate"].map((tg) => (
+                        <button
+                          key={tg}
+                          type="button"
+                          className="adm-btn adm-btn-xs"
+                          onClick={() => {
+                            const current = form.tags ? form.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+                            if (!current.includes(tg)) {
+                              setForm({ ...form, tags: [...current, tg].join(", ") });
+                            }
+                          }}
+                        >
+                          + {tg}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="adm-field">
                     <label>Display Sort Order</label>

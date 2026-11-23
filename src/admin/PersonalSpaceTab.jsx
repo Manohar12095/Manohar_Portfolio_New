@@ -39,6 +39,7 @@ export default function PersonalSpaceTab({ currentUserEmail, currentUserRole }) 
   const [statusMsg, setStatusMsg] = useState("");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("recent");
   const [viewingDoc, setViewingDoc] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
@@ -152,17 +153,42 @@ export default function PersonalSpaceTab({ currentUserEmail, currentUserRole }) 
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const getTypeRank = (type) => {
+    const t = (type || "").toLowerCase();
+    if (t === "text" || t === "note") return 1;
+    if (t === "document" || t === "pdf" || t === "file") return 2;
+    if (t === "photo" || t === "image") return 3;
+    if (t === "audio") return 4;
+    if (t === "video") return 5;
+    return 6;
+  };
+
   const filteredItems = useMemo(() => {
-    return items.filter(item => {
+    let list = items.filter(item => {
       const matchCat = categoryFilter === "All" || item.category === categoryFilter;
       const q = search.toLowerCase().trim();
       const matchSearch = !q || 
         (item.title && item.title.toLowerCase().includes(q)) ||
         (item.content && item.content.toLowerCase().includes(q)) ||
-        (item.category && item.category.toLowerCase().includes(q));
+        (item.category && item.category.toLowerCase().includes(q)) ||
+        (item.type && item.type.toLowerCase().includes(q));
       return matchCat && matchSearch;
     });
-  }, [items, categoryFilter, search]);
+
+    if (sortBy === "recent") {
+      list.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    } else if (sortBy === "added") {
+      list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    } else if (sortBy === "type") {
+      list.sort((a, b) => getTypeRank(a.type) - getTypeRank(b.type));
+    } else if (sortBy === "title-asc") {
+      list.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    } else if (sortBy === "title-desc") {
+      list.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
+    }
+
+    return list;
+  }, [items, categoryFilter, search, sortBy]);
 
   // Access Denied Screen for Non-SuperUsers
   if (!isSuperUser) {
@@ -232,6 +258,20 @@ export default function PersonalSpaceTab({ currentUserEmail, currentUserRole }) 
             <option value="Identity">Government Identification</option>
             <option value="Civil">Civil Records</option>
             <option value="Financial">Financial Documents</option>
+            <option value="Notes">Notes &amp; Text</option>
+            <option value="Media">Audios &amp; Videos</option>
+          </select>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="adm-role-select"
+            style={{ width: "auto" }}
+          >
+            <option value="recent">Sort: Recently Modified</option>
+            <option value="added">Sort: Date Added</option>
+            <option value="type">Sort: Type (Text &gt; Docs &gt; Media)</option>
+            <option value="title-asc">Sort: Title (A → Z)</option>
+            <option value="title-desc">Sort: Title (Z → A)</option>
           </select>
         </div>
         <button type="button" className="adm-btn adm-btn-sm" onClick={fetchItems}>
@@ -390,42 +430,61 @@ export default function PersonalSpaceTab({ currentUserEmail, currentUserRole }) 
               </button>
             </div>
             <form onSubmit={handleSave} className="adm-modal-form">
-              <label>Document Category</label>
-              <select
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-              >
-                <option value="Academic">Academic (Marksheet / Grade Sheet / TC)</option>
-                <option value="Identity">Government Identification (Aadhaar, PAN, Passport, Licence)</option>
-                <option value="Civil">Civil Records (Birth, Community)</option>
-                <option value="Financial">Financial (Bank Passbook / Statements)</option>
-                <option value="General">General Personal Item</option>
-              </select>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <label>Item Type</label>
+                  <select
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  >
+                    <option value="document">📄 Document / PDF</option>
+                    <option value="text">📝 Text Note / Document</option>
+                    <option value="photo">🖼️ Image / Photo</option>
+                    <option value="audio">🎵 Audio Track / Recording</option>
+                    <option value="video">🎬 Video Clip</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Category</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  >
+                    <option value="Academic">Academic (Marksheet / Grade Sheet / TC)</option>
+                    <option value="Identity">Government Identification</option>
+                    <option value="Civil">Civil Records</option>
+                    <option value="Financial">Financial Documents</option>
+                    <option value="Notes">Notes &amp; Reflections</option>
+                    <option value="General">General Personal Item</option>
+                  </select>
+                </div>
+              </div>
 
-              <label>Document Title *</label>
+              <label>Document / Note Title *</label>
               <input
                 type="text"
                 required
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g. B.E. Semester 4 Marksheet"
+                placeholder="e.g. B.E. Semester 4 Marksheet or System Architecture Notes"
               />
 
-              <label>Google Drive or Direct Media Link *</label>
+              <label>Google Drive or Direct Media Link {form.type !== "text" ? "*" : "(Optional)"}</label>
               <input
                 type="text"
-                required
+                required={form.type !== "text"}
                 value={form.media_url}
                 onChange={(e) => setForm({ ...form, media_url: e.target.value })}
                 placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
               />
 
-              <label>Description / Notes</label>
+              <label>Content / Notes / Description</label>
               <textarea
-                rows={3}
+                rows={6}
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
-                placeholder="Details, issuing board, date of issue..."
+                placeholder="Type or paste document text, note contents, or descriptions..."
+                style={{ fontFamily: form.type === "text" ? "var(--font-mono, monospace)" : "inherit" }}
               />
 
               <div className="adm-modal-actions">
