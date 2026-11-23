@@ -1,7 +1,7 @@
 # S. Manohar — 3D Portfolio & Admin Architecture Manual
-## Version 1.0.0 (Official Production Milestone)
+## Version 1.1.0 (Official Production Milestone)
 
-> **Important Developer Notice**: This document serves as the complete technical architecture manual and chronological changelog for the **S. Manohar 3D Developer Portfolio (V 1.0.0)**. Any developer or AI coding agent upgrading or maintaining this repository can refer to this guide to understand how every component, database table, security rule, telemetry streamer, and UI flow works.
+> **Important Developer Notice**: This document serves as the complete technical architecture manual and chronological changelog for the **S. Manohar 3D Developer Portfolio (V 1.1.0)**. Any developer or AI coding agent upgrading or maintaining this repository can refer to this guide to understand how every component, database table, security rule, telemetry streamer, and UI flow works.
 
 ---
 
@@ -214,18 +214,20 @@ Security alerts are monitored in real time and categorized into a strict 3-tier 
 
 ## 4. Chronological Version Changelog
 
-### Version 1.0.0 — Official Production Release (Current)
+### Version 1.1.0 — Production Milestone Release (Current)
 - **Native Cloud Media Storage & Direct Upload Suite**: Implemented Supabase Storage `portfolio-media` public bucket and `src/lib/cloudStorage.js` service, eliminating reliance on external Google Apps Script web apps. Enabled direct drag-and-drop and 1-click uploads for all photos (JPG, PNG, WebP, GIF, AVIF) and videos (MP4, WebM, MOV) with instant CDN delivery. Added direct upload buttons across all admin media fields and Personal Space editor modal, while maintaining seamless Google Drive integration.
 - **Personal Space Modal Stacking & Database Schema Patch**: Portalled both document preview and note editor modals to `document.body` via React `createPortal` with `z-index: 999999`, resolving stacking context issues where the global navbar overlapped modal headers. Added `category` column to `personal_items` table in Supabase PostgreSQL with schema cache reload and defensive client-side fallback handling.
+- **Personal Space In-Website Previews & Editor**: Built interactive in-website document & text previewing system; added embedded Google Drive preview iframe modal, in-place text note editor, audio/video players, live search, and sorting.
 - **Journey**: Implemented natural aspect ratio frames (`max-height: 440px`, `object-fit: contain`) so complete collage photos and group images display fully without clipping.
 - **Admin Sidebar**: Added independent scrollable navigation (`.adm-nav`) with `max-height: calc(100vh - 100px)` and thin scrollbars, enabling easy access to all 18 tabs.
-- **Security Alerts**: Added Minimize / Expand toggle button in Monitoring tab; implemented 3-tier color classification (Green for links/downloads/>20s watch, Yellow for login/F12, Red for intrusion/screenshots/tampering).
+- **Security Alerts & Intrusion Detection**: Added Minimize / Expand toggle button in Monitoring tab; implemented 3-tier color classification (Green for links/downloads/>20s watch, Yellow for login/F12, Red for intrusion/screenshots/tampering).
 - **Super User Alert Suppression**: Filtered Super User (Manohar) activity so admin management never floods security alerts with false alarms.
-- **Certificates**: Added tags (`Medal`, `Awards`, `Digital Badges`, `Other Rewards`); added Sort By dropdown (Year, Type Priority, Multi-page first, Title).
-- **Personal Space**: Built in-website document & text previewing system; added embedded Google Drive preview iframe modal, in-place text note editor, audio/video players, live search, and sorting.
+- **Certificates Hub**: Added tags (`Medal`, `Awards`, `Digital Badges`, `Other Rewards`); added Sort By dropdown (Year, Type Priority, Multi-page first, Title).
 - **User Blocking**: Added 10 duration options (5m to permanent) with active session interception via `BlockedScreen`.
 - **Lock Button**: Fixed logout flow to clear Supabase auth session, preventing unauthorized auto-unlock.
 - **Automated Verification**: Created `scripts/verify_project_flow.cjs` verifying 10 database tables, telemetry streamers, blocking columns, personal items, and user auth sign-in.
+
+### Version 1.0.0 (2026-11-23) — Foundation Release
 
 ### Version 1.3 (2026-11-19)
 - Introduced Visitor Welcome Gate with avatar of S. Manohar and name input.
