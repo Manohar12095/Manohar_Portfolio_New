@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { recordVisitorLogin } from "../lib/telemetry";
+import { recordVisitorLogin, logVisitorAction } from "../lib/telemetry";
 
 export default function WelcomeGate({ onEnter }) {
   const [name, setName] = useState("");
@@ -8,12 +8,13 @@ export default function WelcomeGate({ onEnter }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed) {
-      setError("Please enter your name to continue");
+    if (!trimmed || trimmed.length < 2) {
+      setError("Please enter your name (at least 2 characters) to explore the portfolio");
       return;
     }
     setError("");
     recordVisitorLogin(trimmed);
+    logVisitorAction(`Visitor unlocked portfolio with name: ${trimmed}`, "login");
     onEnter(trimmed);
   };
 
@@ -59,9 +60,10 @@ export default function WelcomeGate({ onEnter }) {
                 setName(e.target.value);
                 if (error) setError("");
               }}
-              placeholder=""
+              placeholder="e.g. Alex Kumar"
               autoFocus
               maxLength={60}
+              required
             />
           </div>
 
@@ -70,7 +72,7 @@ export default function WelcomeGate({ onEnter }) {
           <button
             type="submit"
             className="welcome-gate-btn"
-            disabled={!name.trim()}
+            disabled={name.trim().length < 2}
           >
             ENTER PORTFOLIO →
           </button>

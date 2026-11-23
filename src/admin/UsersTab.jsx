@@ -30,14 +30,14 @@ export default function UsersTab({ currentUserEmail, currentUserRole }) {
     currentUserEmail === "manoharorignal@gmail.com" || 
     currentUserEmail === "pvcmanohar@gmail.com";
 
-  const fetchData = async () => {
+  const fetchData = async (isBackground = false) => {
     if (!supabase || !isSuperUser) return;
-    setLoading(true);
+    if (!isBackground) setLoading(true);
     try {
       const [telRes, secRes, blkRes] = await Promise.all([
-        supabase.from("visitor_telemetry").select("*").order("last_active_at", { ascending: false }),
-        supabase.from("security_alerts").select("*").order("created_at", { ascending: false }),
-        supabase.from("visitor_blocks").select("*").eq("is_active", true).order("created_at", { ascending: false })
+        supabase.from("visitor_telemetry").select("*").order("last_active_at", { ascending: false }).limit(500),
+        supabase.from("security_alerts").select("*").order("created_at", { ascending: false }).limit(500),
+        supabase.from("visitor_blocks").select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(200)
       ]);
       setTelemetry(telRes.data || []);
       const nonSuperSec = (secRes.data || []).filter((a) => {
@@ -49,15 +49,40 @@ export default function UsersTab({ currentUserEmail, currentUserRole }) {
     } catch (err) {
       console.warn("Error fetching users data:", err.message);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isSuperUser) {
-      fetchData();
+    if (!isSuperUser) return;
+    fetchData();
+
+    // 1. Polling interval to ensure fresh visitor activity every 6 seconds
+    const interval = setInterval(() => {
+      fetchData(true);
+    }, 6000);
+
+    // 2. Realtime subscription for instant updates on inserts/updates
+    let channel;
+    try {
+      channel = supabase
+        ?.channel("users_tab_realtime_sync")
+        ?.on("postgres_changes", { event: "*", schema: "public", table: "visitor_telemetry" }, () => {
+          fetchData(true);
+        })
+        ?.on("postgres_changes", { event: "*", schema: "public", table: "security_alerts" }, () => {
+          fetchData(true);
+        })
+        ?.subscribe();
+    } catch {
+      /* ignore */
     }
-  }, [isSuperUser]);
+
+    return () => {
+      clearInterval(interval);
+      if (channel && supabase) supabase.removeChannel(channel);
+    };
+  }, [isSuperUser, supabase]);
 
   if (!isSuperUser) {
     return (
@@ -256,6 +281,11 @@ export default function UsersTab({ currentUserEmail, currentUserRole }) {
                     <div className="adm-user-name-box">
                       <strong>{u.visitor_name || "Anonymous Visitor"}</strong>
                       <span className="adm-user-device">
+                        {u.os === "Linux" && (
+                          <span style={{ background: "#2563eb", color: "#fff", padding: "1px 5px", borderRadius: "4px", fontSize: "10px", fontWeight: 800, marginRight: "5px" }}>
+                            LINUX
+                          </span>
+                        )}
                         {u.device_type} · {u.os} · {u.browser}
                       </span>
                     </div>

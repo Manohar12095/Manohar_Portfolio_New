@@ -24,13 +24,25 @@ function detectDevice() {
 
 /** Detects OS */
 function detectOS() {
+  // Check User-Agent Data API first if available
+  const uadPlatform = navigator.userAgentData?.platform;
+  if (uadPlatform) {
+    if (/Linux/i.test(uadPlatform)) return "Linux";
+    if (/Windows/i.test(uadPlatform)) return "Windows";
+    if (/macOS|Mac/i.test(uadPlatform)) return "macOS";
+    if (/Android/i.test(uadPlatform)) return "Android";
+  }
+
   const ua = navigator.userAgent || "";
-  if (/Windows/i.test(ua)) return "Windows";
-  if (/Mac OS X|Macintosh/i.test(ua)) return "macOS";
+  const platform = navigator.platform || "";
+
   if (/Android/i.test(ua)) return "Android";
   if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
-  if (/Linux/i.test(ua)) return "Linux";
+  if (/Windows/i.test(ua) || /Win/i.test(platform)) return "Windows";
+  if (/Mac OS X|Macintosh/i.test(ua) || /Mac/i.test(platform)) return "macOS";
   if (/CrOS/i.test(ua)) return "ChromeOS";
+  if (/Linux|X11|Ubuntu|Debian|Fedora|CentOS|Arch|Mint|RedHat|SUSE/i.test(ua) || /Linux|X11/i.test(platform)) return "Linux";
+
   return "Unknown OS";
 }
 
@@ -43,6 +55,7 @@ function detectBrowser() {
   if (/Safari\//i.test(ua) && !/Chrome|Chromium/i.test(ua)) return "Safari";
   if (/Firefox\//i.test(ua)) return "Mozilla Firefox";
   if (/Brave/i.test(ua) || navigator.brave) return "Brave";
+  if (/Chromium/i.test(ua)) return "Chromium";
   return "Modern Browser";
 }
 
@@ -154,8 +167,9 @@ export function isSuperUserVisitor() {
 /** Records a security alert into Supabase and marks session as threat */
 export async function recordSecurityAlert({ event_type, severity = "critical", details = "", metadata = {} }) {
   const sessionId = getOrCreateSessionId();
-  const visitorName = getStoredVisitorName() || "Anonymous Visitor";
   const snapshot = getClientTelemetrySnapshot();
+  const stored = getStoredVisitorName();
+  const visitorName = stored || `Guest (${snapshot.os})`;
   const adapter = getAdapter();
   const supabase = adapter?.supabase;
 
@@ -233,17 +247,31 @@ export async function recordSecurityAlert({ event_type, severity = "critical", d
 /**
  * Logs visitor entry to Supabase (NON-BLOCKING)
  */
-export function recordVisitorLogin(name) {
-  const storedName = setStoredVisitorName(name);
+export function recordVisitorLogin(name, options = {}) {
+  const isInitial = options?.isInitial || false;
+  const snapshot = getClientTelemetrySnapshot();
+  let storedName = (name || "").trim().slice(0, 80);
+  if (!storedName) {
+    storedName = `Guest (${snapshot.os})`;
+  }
+  if (!isInitial) {
+    setStoredVisitorName(storedName);
+  }
   const sessionId = getOrCreateSessionId();
   sessionStorage.setItem(SESSION_LOGGED_KEY, "1");
 
-  const snapshot = getClientTelemetrySnapshot();
   const adapter = getAdapter();
   const supabase = adapter?.supabase;
 
   const initialPage = window.location.pathname + (window.location.hash || "");
-  sessionStorage.setItem(PAGES_KEY, JSON.stringify([initialPage]));
+  let pages = [];
+  try {
+    pages = JSON.parse(sessionStorage.getItem(PAGES_KEY) || "[]");
+  } catch {
+    pages = [];
+  }
+  if (!pages.includes(initialPage)) pages.push(initialPage);
+  sessionStorage.setItem(PAGES_KEY, JSON.stringify(pages));
 
   if (!supabase) {
     return Promise.resolve({ sessionId, name: storedName });
@@ -255,8 +283,8 @@ export function recordVisitorLogin(name) {
     ...snapshot,
     login_time: new Date().toISOString(),
     last_active_at: new Date().toISOString(),
-    duration_seconds: 0,
-    pages_viewed: [initialPage],
+    duration_seconds: secondsSpent || 0,
+    pages_viewed: pages,
     actions: bufferedActions,
     threat_level: "normal",
   };
@@ -316,10 +344,14 @@ export function initTelemetryTracking() {
   const sessionId = getOrCreateSessionId();
   const name = getStoredVisitorName();
 
-  // If returning visitor whose session hasn't been logged in this tab yet:
+  // Ensure session is registered in visitor_telemetry right on arrival
   const isSessionLogged = sessionStorage.getItem(SESSION_LOGGED_KEY);
-  if (!isSessionLogged && name) {
-    recordVisitorLogin(name);
+  if (!isSessionLogged) {
+    if (name) {
+      recordVisitorLogin(name);
+    } else {
+      recordVisitorLogin(`Guest (${detectOS()})`, { isInitial: true });
+    }
   }
 
   // 1. Pages and sections observer

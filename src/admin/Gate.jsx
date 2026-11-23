@@ -4,7 +4,7 @@ import { ArrowLeft, Lock, LogIn, ShieldAlert, Eye, EyeOff, KeyRound } from "luci
 import { createClient } from "@supabase/supabase-js";
 import { MIN_LENGTH, hasPasscode, lockedSeconds, setPasscode, startSession, verifyPasscode, isSessionActive } from "./auth";
 import { getAdapter } from "../data/store";
-import { recordSecurityAlert } from "../lib/telemetry";
+import { recordSecurityAlert, recordVisitorLogin } from "../lib/telemetry";
 
 const supaUrl = import.meta.env.VITE_SUPABASE_URL || "https://sqbrczfojykfhfugbisr.supabase.co";
 const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_2sr3UUxFtn5ypkr8tCHWpA_Oxr6FMdl";
@@ -83,6 +83,8 @@ export default function Gate({ onUnlock }) {
         if (directErr) throw directErr;
       }
       startSession();
+      const adminUser = email.trim().split("@")[0] || "Admin";
+      recordVisitorLogin(adminUser);
       onUnlock();
     } catch (err) {
       setDbError(err.message || "Sign in failed. Check your email and password.");
@@ -108,11 +110,13 @@ export default function Gate({ onUnlock }) {
         if (code !== again) throw new Error("The two passcodes do not match.");
         await setPasscode(code);
         startSession();
+        recordVisitorLogin("Passcode Admin");
         onUnlock();
       } else {
         const r = await verifyPasscode(code);
         if (r.ok) {
           startSession();
+          recordVisitorLogin("Passcode Admin");
           onUnlock();
         } else if (r.wait) {
           setWait(r.wait);

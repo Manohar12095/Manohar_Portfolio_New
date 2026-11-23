@@ -64,6 +64,9 @@ export default function MonitoringTab() {
   const [messages, setMessages] = useState([]);
   const [securityAlerts, setSecurityAlerts] = useState([]);
   const [alertsMinimized, setAlertsMinimized] = useState(false);
+  const [alertUserFilter, setAlertUserFilter] = useState("all");
+  const [alertSort, setAlertSort] = useState("newest");
+  const [alertSeverityFilter, setAlertSeverityFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -73,6 +76,38 @@ export default function MonitoringTab() {
 
   const adapter = getAdapter();
   const supabase = adapter?.supabase;
+
+  const uniqueAlertUsers = useMemo(() => {
+    const map = {};
+    securityAlerts.forEach((a) => {
+      const name = a.visitor_name || "Unknown Visitor";
+      map[name] = (map[name] || 0) + 1;
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [securityAlerts]);
+
+  const displayAlerts = useMemo(() => {
+    let list = [...securityAlerts];
+    if (alertUserFilter !== "all") {
+      list = list.filter((a) => (a.visitor_name || "Unknown Visitor") === alertUserFilter);
+    }
+    if (alertSeverityFilter !== "all") {
+      if (alertSeverityFilter === "red") list = list.filter((a) => a.severity === "critical" || a.severity === "red");
+      else if (alertSeverityFilter === "yellow") list = list.filter((a) => a.severity === "yellow" || a.severity === "warning");
+      else if (alertSeverityFilter === "green") list = list.filter((a) => a.severity === "green" || a.severity === "normal");
+    }
+    if (alertSort === "newest") {
+      list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else if (alertSort === "oldest") {
+      list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else if (alertSort === "user") {
+      list.sort((a, b) => (a.visitor_name || "").localeCompare(b.visitor_name || ""));
+    } else if (alertSort === "severity") {
+      const weight = { critical: 3, red: 3, yellow: 2, warning: 2, green: 1, normal: 1 };
+      list.sort((a, b) => (weight[b.severity] || 0) - (weight[a.severity] || 0));
+    }
+    return list;
+  }, [securityAlerts, alertUserFilter, alertSeverityFilter, alertSort]);
 
   const fetchAllData = async (silent = false) => {
     if (!supabase) {
@@ -440,70 +475,205 @@ export default function MonitoringTab() {
             </div>
           </div>
         ) : (
-          <div className="adm-mon-table-wrap">
-            <table className="adm-mon-table adm-security-table">
-              <thead>
-                <tr>
-                  <th>Threat Event</th>
-                  <th>Severity</th>
-                  <th>Visitor / Attacker</th>
-                  <th>Incident Details</th>
-                  <th>Device / Browser</th>
-                  <th>Detected</th>
-                </tr>
-              </thead>
-              <tbody>
-                {securityAlerts.map((a) => {
-                  const isGreen = a.severity === "green" || a.severity === "normal" || a.severity === "info";
-                  const isYellow = a.severity === "yellow" || a.severity === "warning";
-                  const rowClass = isGreen
-                    ? "adm-security-row is-green-row"
-                    : isYellow
-                    ? "adm-security-row is-yellow-row"
-                    : "adm-security-row";
-                  const badgeClass = isGreen
-                    ? "adm-security-badge is-green"
-                    : isYellow
-                    ? "adm-security-badge is-yellow"
-                    : "adm-security-badge is-critical";
-                  const badgeLabel = isGreen ? "GREEN (SAFE)" : isYellow ? "YELLOW (WARNING)" : "RED (CRITICAL)";
-                  const tagColor = isGreen ? "#16a34a" : isYellow ? "#ca8a04" : "#b91c1c";
+          <>
+            {/* Filter and Sort Toolbar for Security Alerts */}
+            <div className="adm-security-toolbar">
+              <div className="adm-security-filters-left">
+                <div className="adm-security-select-group">
+                  <label htmlFor="sec-user-filter" className="adm-security-label">
+                    <User size={13} /> User Filter:
+                  </label>
+                  <select
+                    id="sec-user-filter"
+                    value={alertUserFilter}
+                    onChange={(e) => setAlertUserFilter(e.target.value)}
+                    className="adm-security-select"
+                  >
+                    <option value="all">All Users ({securityAlerts.length} events)</option>
+                    {uniqueAlertUsers.map(([uname, count]) => (
+                      <option key={uname} value={uname}>
+                        {uname} ({count} {count === 1 ? "alert" : "alerts"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                  return (
-                    <tr key={a.id} className={rowClass}>
-                      <td>
-                        <div className="adm-security-event-tag" style={{ color: tagColor }}>
-                          <AlertTriangle size={15} />
-                          <strong>{a.event_type}</strong>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={badgeClass}>
-                          {badgeLabel}
-                        </span>
-                      </td>
-                      <td>
-                        <strong style={{ color: tagColor }}>{a.visitor_name || "Unknown"}</strong>
-                      </td>
-                      <td style={{ maxWidth: 340, wordBreak: "break-word" }}>
-                        {a.details}
-                      </td>
-                      <td>
-                        <span className="adm-mon-subtext">
-                          {a.device_info?.os || "Unknown OS"} · {a.device_info?.browser || "Browser"}
-                        </span>
-                      </td>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        <span title={new Date(a.created_at).toLocaleString()}>
-                          {timeAgo(a.created_at)}
-                        </span>
+                <div className="adm-security-select-group">
+                  <label htmlFor="sec-severity-filter" className="adm-security-label">
+                    <AlertTriangle size={13} /> Severity:
+                  </label>
+                  <select
+                    id="sec-severity-filter"
+                    value={alertSeverityFilter}
+                    onChange={(e) => setAlertSeverityFilter(e.target.value)}
+                    className="adm-security-select"
+                  >
+                    <option value="all">All Severities</option>
+                    <option value="red">🔴 Red (Critical)</option>
+                    <option value="yellow">🟡 Yellow (Warning)</option>
+                    <option value="green">🟢 Green (Safe / Info)</option>
+                  </select>
+                </div>
+
+                <div className="adm-security-select-group">
+                  <label htmlFor="sec-sort" className="adm-security-label">
+                    Sort:
+                  </label>
+                  <select
+                    id="sec-sort"
+                    value={alertSort}
+                    onChange={(e) => setAlertSort(e.target.value)}
+                    className="adm-security-select"
+                  >
+                    <option value="newest">🕒 Newest First</option>
+                    <option value="oldest">🕒 Oldest First</option>
+                    <option value="user">👤 Sort by User (A–Z)</option>
+                    <option value="severity">⚠️ Severity (Red &gt; Yellow &gt; Green)</option>
+                  </select>
+                </div>
+              </div>
+
+              {(alertUserFilter !== "all" || alertSeverityFilter !== "all" || alertSort !== "newest") && (
+                <button
+                  type="button"
+                  className="adm-btn adm-btn-xs"
+                  onClick={() => {
+                    setAlertUserFilter("all");
+                    setAlertSeverityFilter("all");
+                    setAlertSort("newest");
+                  }}
+                  style={{ alignSelf: "center" }}
+                >
+                  Reset filters
+                </button>
+              )}
+            </div>
+
+            <div className="adm-mon-table-wrap">
+              <table className="adm-mon-table adm-security-table">
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: "150px" }}>USER NAME</th>
+                    <th style={{ minWidth: "180px" }}>Threat Event</th>
+                    <th style={{ minWidth: "140px" }}>Severity</th>
+                    <th style={{ minWidth: "160px" }}>Visitor / Attacker</th>
+                    <th style={{ minWidth: "320px" }}>Incident Details (CLEARLY)</th>
+                    <th style={{ minWidth: "170px" }}>Device / Browser</th>
+                    <th style={{ minWidth: "130px" }}>TIME</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayAlerts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: "center", padding: "28px", color: "var(--a-soft)" }}>
+                        No security alerts match the selected filter.
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    displayAlerts.map((a) => {
+                      const isGreen = a.severity === "green" || a.severity === "normal" || a.severity === "info";
+                      const isYellow = a.severity === "yellow" || a.severity === "warning";
+                      const rowClass = isGreen
+                        ? "adm-security-row is-green-row"
+                        : isYellow
+                        ? "adm-security-row is-yellow-row"
+                        : "adm-security-row";
+                      const badgeClass = isGreen
+                        ? "adm-security-badge is-green"
+                        : isYellow
+                        ? "adm-security-badge is-yellow"
+                        : "adm-security-badge is-critical";
+                      const badgeLabel = isGreen ? "GREEN (SAFE)" : isYellow ? "YELLOW (WARNING)" : "RED (CRITICAL)";
+                      const tagColor = isGreen ? "#16a34a" : isYellow ? "#ca8a04" : "#b91c1c";
+
+                      const rawName = a.visitor_name || "Unknown Visitor";
+                      const isAnonymous = !a.visitor_name || a.visitor_name.toLowerCase().includes("anonymous") || a.visitor_name.toLowerCase().startsWith("guest");
+                      const isWrongPass = a.event_type === "WRONG_ADMIN_PASSWORD" || a.event_type === "ADMIN_LOCKOUT";
+                      const attackerLabel = isWrongPass
+                        ? "🚨 Unauthorized Intruder"
+                        : isAnonymous
+                        ? "👤 Anonymous Visitor"
+                        : `👤 Verified Visitor (${rawName})`;
+
+                      const os = a.device_info?.os || "Unknown OS";
+                      const browser = a.device_info?.browser || "Browser";
+
+                      return (
+                        <tr key={a.id} className={rowClass}>
+                          {/* 1. USER NAME */}
+                          <td>
+                            <div className="adm-sec-user-cell">
+                              <span className="adm-sec-avatar-badge">
+                                <User size={13} />
+                              </span>
+                              <strong className="adm-sec-username" title={rawName}>
+                                {rawName}
+                              </strong>
+                            </div>
+                          </td>
+
+                          {/* 2. Threat Event */}
+                          <td>
+                            <div className="adm-security-event-tag" style={{ color: tagColor }}>
+                              <AlertTriangle size={15} />
+                              <strong>{a.event_type}</strong>
+                            </div>
+                          </td>
+
+                          {/* 3. Severity */}
+                          <td>
+                            <span className={badgeClass}>
+                              {badgeLabel}
+                            </span>
+                          </td>
+
+                          {/* 4. Visitor / Attacker */}
+                          <td>
+                            <span className={`adm-sec-classification ${isWrongPass ? "is-intruder" : isAnonymous ? "is-anon" : "is-known"}`}>
+                              {attackerLabel}
+                            </span>
+                          </td>
+
+                          {/* 5. Incident Details (CLEARLY) */}
+                          <td>
+                            <div className="adm-sec-details-box">
+                              {a.details}
+                            </div>
+                          </td>
+
+                          {/* 6. Device / Browser */}
+                          <td>
+                            <div className="adm-sec-device-box">
+                              {os === "Linux" && (
+                                <span style={{ background: "#2563eb", color: "#fff", padding: "1px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: 800, marginRight: 5 }}>
+                                  LINUX
+                                </span>
+                              )}
+                              <span className="adm-mon-subtext">
+                                {os} · {browser}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 7. TIME */}
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            <div className="adm-sec-time-cell">
+                              <strong title={new Date(a.created_at).toLocaleString()}>
+                                {timeAgo(a.created_at)}
+                              </strong>
+                              <small style={{ display: "block", color: "var(--a-soft)", fontSize: "11px" }}>
+                                {new Date(a.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                              </small>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
