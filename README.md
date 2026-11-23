@@ -1,4 +1,5 @@
-# S. Manohar — Interactive 3D Portfolio & Admin Suite (V 1.0.0)
+# S. Manohar — Interactive 3D Portfolio & Admin Suite 
+(V 1.0.0)
 
 [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
