@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   Lock, ArrowLeft, Plus, Image, Video, FileText, Award, Eye, 
@@ -158,7 +159,7 @@ export default function PersonalSpace() {
     const payload = {
       title: editorForm.title.trim(),
       type: editorForm.type,
-      category: editorForm.category.trim(),
+      category: editorForm.category ? editorForm.category.trim() : null,
       content: editorForm.content.trim(),
       media_url: editorForm.media_url.trim(),
       updated_at: new Date().toISOString(),
@@ -166,16 +167,35 @@ export default function PersonalSpace() {
 
     try {
       if (supabase) {
-        if (editingItem && editingItem.id && !editingItem.id.startsWith("p")) {
+        if (editingItem && editingItem.id && !editingItem.id.startsWith("p") && !editingItem.id.startsWith("local-")) {
           const { error } = await supabase.from("personal_items").update(payload).eq("id", editingItem.id);
-          if (error) throw error;
+          if (error) {
+            // Defensive retry without category column if schema cache error is returned
+            if (error.message && error.message.toLowerCase().includes("category")) {
+              const { category, ...fallbackPayload } = payload;
+              const { error: err2 } = await supabase.from("personal_items").update(fallbackPayload).eq("id", editingItem.id);
+              if (err2) throw err2;
+            } else {
+              throw error;
+            }
+          }
         } else {
-          const { error } = await supabase.from("personal_items").insert([{
+          const insertData = {
             ...payload,
             sort_order: items.length + 1,
             created_at: new Date().toISOString(),
-          }]);
-          if (error) throw error;
+          };
+          const { error } = await supabase.from("personal_items").insert([insertData]);
+          if (error) {
+            // Defensive retry without category column if schema cache error is returned
+            if (error.message && error.message.toLowerCase().includes("category")) {
+              const { category, ...fallbackInsert } = insertData;
+              const { error: err2 } = await supabase.from("personal_items").insert([fallbackInsert]);
+              if (err2) throw err2;
+            } else {
+              throw error;
+            }
+          }
         }
       }
 
@@ -763,7 +783,7 @@ export default function PersonalSpace() {
         {/* ==========================================================================
             IN-WEBSITE DOCUMENT & TEXT VIEWER MODAL
             ========================================================================== */}
-        {viewingItem && (
+        {viewingItem && createPortal(
           <div className="personal-viewer-overlay" onClick={() => setViewingItem(null)}>
             <div className="personal-viewer-card" onClick={(e) => e.stopPropagation()}>
               <div className="personal-viewer-head">
@@ -897,23 +917,25 @@ export default function PersonalSpace() {
                 )}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ==========================================================================
             IN-PLACE TEXT & ITEM EDITOR MODAL
             ========================================================================== */}
-        {editorOpen && (
+        {editorOpen && createPortal(
           <div className="adm-modal-overlay" style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.65)",
-            backdropFilter: "blur(5px)",
+            background: "rgba(0,0,0,0.8)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
             display: "grid",
             placeItems: "center",
-            zIndex: 1000,
+            zIndex: 999999,
             padding: "20px"
-          }}>
+          }} onClick={() => setEditorOpen(false)}>
             <div className="adm-modal-card" style={{
               background: "var(--surface)",
               color: "var(--ink)",
@@ -921,9 +943,11 @@ export default function PersonalSpace() {
               width: "100%",
               borderRadius: "16px",
               border: "1px solid var(--border)",
-              boxShadow: "var(--shadow-xl)",
-              overflow: "hidden"
-            }}>
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
+              overflow: "hidden",
+              position: "relative",
+              zIndex: 1000000
+            }} onClick={(e) => e.stopPropagation()}>
               <div style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -1089,7 +1113,8 @@ export default function PersonalSpace() {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>

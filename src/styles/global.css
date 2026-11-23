@@ -3847,8 +3847,8 @@ button:disabled {
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  z-index: 99999 !important;
-  background: rgba(10, 16, 28, 0.72) !important;
+  z-index: 999999 !important;
+  background: rgba(10, 16, 28, 0.78) !important;
   backdrop-filter: blur(8px) !important;
   display: flex !important;
   align-items: center !important;
@@ -5116,16 +5116,16 @@ button:disabled {
 }
 
 .personal-viewer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999999 !important;
+  padding: 20px !important;
 }
 .personal-viewer-card {
   background: var(--surface);

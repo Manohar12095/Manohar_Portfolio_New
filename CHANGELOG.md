@@ -215,6 +215,7 @@ Security alerts are monitored in real time and categorized into a strict 3-tier 
 ## 4. Chronological Version Changelog
 
 ### Version 1.0.0 — Official Production Release (Current)
+- **Personal Space Modal Stacking & Database Schema Patch**: Portalled both document preview and note editor modals to `document.body` via React `createPortal` with `z-index: 999999`, resolving stacking context issues where the global navbar overlapped modal headers. Added `category` column to `personal_items` table in Supabase PostgreSQL with schema cache reload and defensive client-side fallback handling.
 - **Journey**: Implemented natural aspect ratio frames (`max-height: 440px`, `object-fit: contain`) so complete collage photos and group images display fully without clipping.
 - **Admin Sidebar**: Added independent scrollable navigation (`.adm-nav`) with `max-height: calc(100vh - 100px)` and thin scrollbars, enabling easy access to all 18 tabs.
 - **Security Alerts**: Added Minimize / Expand toggle button in Monitoring tab; implemented 3-tier color classification (Green for links/downloads/>20s watch, Yellow for login/F12, Red for intrusion/screenshots/tampering).
