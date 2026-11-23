@@ -1,145 +1,90 @@
-# Manohar: 3D Portfolio with an Admin Panel
+# S. Manohar — Interactive 3D Portfolio & Admin Suite (V 1.0.0)
 
-A 3D portfolio built with **React + Vite + Three.js**. A WebGL scene sits behind the page, and the hero photo has a small play button that swaps the photo for a short intro video. You edit everything from a built-in **admin page** (`/admin`), pick from **13 themes**, and design your own.
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
+[![Three.js](https://img.shields.io/badge/Three.js-0.169-000000?style=flat&logo=three.js&logoColor=white)](https://threejs.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=flat&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=flat&logo=vercel&logoColor=white)](https://vercel.com/)
 
-## Run it (Windows): `portfolio.bat`
+A modern, high-performance 3D developer portfolio and administrative content management suite built with **React 18 + Vite + Three.js + Supabase**. Featuring real-time visitor telemetry, a 3-tier behavioral intrusion detection system, verified multi-page credentials catalog, confidential personal vault, and an 18-tab administration dashboard.
 
-Double-click **`portfolio.bat`**. It shows a menu:
+---
 
-| Key | What it does |
-|---|---|
-| 1 | Starts the site and opens it in your browser. It installs the packages the first time, and again whenever `package.json` changes. |
-| 2 | Same, but opens the admin page. |
-| 3 | Same, but also on your Wi-Fi so you can open it on your phone (use the Network address it prints). |
-| 4 | **Applies an update zip from Claude.** It backs up first, never overwrites your photos and videos, and asks if you want to keep your own text and theme settings. You can also drag the zip onto `portfolio.bat`. |
-| 5 | Builds the final site (`dist`) and offers to preview it. |
-| 6 | Saves your changes with Git and pushes to GitHub, so Vercel publishes them. |
-| 7 / 8 | Back up now / restore a backup (backups live in `_backups`; delete old ones whenever you like). |
-| 9 | Fixes most "it won't start" problems by reinstalling the packages. |
-| N | Shows what changed in each version (`CHANGELOG.md`). |
+## ✨ Features at a Glance
 
-You need **Node.js 18 or newer** (https://nodejs.org). Option 6 needs **Git**. Every time the project changes how it runs, `portfolio.bat` and `CHANGELOG.md` are updated together. The version is shown in the menu header.
+- **3D WebGL Background Canvas**: Interactive geometric Three.js scene with smooth mouse parallax, particle physics, and performance caps for mobile/low-power devices.
+- **Hero Intro Video Swapper**: Fluid toggle between high-res portrait photo and intro video inside the same frame.
+- **"My Journey" Auto-Adjusting Preview Frames**: Dynamic media cards that naturally adapt to portrait and collage aspect ratios without cropping.
+- **Interactive Projects Showcase**: Categorized by Security, AI, Tools, Web, and Mobile with live demo and source code links.
+- **Verified Credentials & Certificates Hub (`/certificates`)**:
+  - Multi-page document handling for semester marksheets and transcripts.
+  - Tagging system (`Medal`, `Awards`, `Digital Badges`, `Other Rewards`, `Certificate`).
+  - Multi-criteria sorting (Year, Type Priority, Multi-page first, Title).
+  - Exact view-duration tracking and view count analytics.
+- **Manohar's Personal Space Vault (`/personal`)**:
+  - Secure private sanctuary for confidential milestones, marksheets, and notes.
+  - Full in-website document & text previewing system (interactive Google Drive preview iframe, no redirects).
+  - In-place text document & note editor (create and modify notes directly on the page).
+  - Embedded audio players and video surfaces.
+  - Live keyword search and multi-mode sorting.
+- **Real-Time Client Telemetry & Analytics**: Non-intrusive logging of visitor OS, browser, screen resolution, viewport, network speed, and live active session duration with a 5-second heartbeat.
+- **3-Tier Behavioral Intrusion Detection**:
+  - 🟢 **Green (Safe)**: Link clicks, certificate downloads, >20s engagement.
+  - 🟡 **Yellow (Warning)**: Admin login screen navigation, F12 developer key inspection.
+  - 🔴 **Red (Critical)**: Screenshots (PrintScreen, Win+Shift+S, macOS), screen recording (`getDisplayMedia`), Ctrl+P print, right-click inspect, copy/share tampering.
+  - **Super User Filter Rule**: Suppresses false-positive alerts while Manohar manages the portfolio.
+- **Role-Based Access Control (RBAC) & Visitor Blocking**:
+  - Multi-tier roles (`superuser`, `editor`, `viewer`) with strict permission boundaries.
+  - 10-option visitor blocking system with immediate `BlockedScreen` interception.
+- **18-Tab Admin Dashboard (`/admin`)**: Complete control over General info, Hero, Sections, Journey, Projects, Skills, Contact, Certificates, Personal Space, Media Library, Themes, Users, and Monitoring.
+- **13 Built-in Themes + Custom Theme Engine**: Live font switcher, color pickers, roundness adjustments, and WebGL particle settings.
 
-### Or by hand
+---
 
+## 🚀 Quick Start
+
+### Option A: Windows Launcher (`portfolio.bat`)
+Double-click **`portfolio.bat`** in the project root:
+- Press **1**: Starts the site at `http://localhost:5173`.
+- Press **2**: Opens the Admin Portal at `http://localhost:5173/admin`.
+- Press **3**: Starts on your Wi-Fi network so you can preview on mobile.
+- Press **5**: Generates production build and local preview.
+- Press **6**: Pushes changes to GitHub for automatic Vercel deployment.
+
+### Option B: Command Line (npm)
 ```bash
-npm install        # downloads everything (once)
-npm run dev        # starts the site at http://localhost:5173
+# 1. Install dependencies
+npm install
+
+# 2. Run local development server
+npm run dev
+
+# 3. Build for production
+npm run build
+
+# 4. Preview production build
+npm run preview
 ```
 
-- Portfolio: `http://localhost:5173/`
-- Admin: `http://localhost:5173/admin`
+---
 
-```bash
-npm run build      # makes the production site in /dist
-npm run preview    # test the production build locally
+## 🔐 Environment Variables (`.env.local`)
+
+Connect your Supabase PostgreSQL database by creating `.env.local`:
+```env
+VITE_SUPABASE_URL=https://sqbrczfojykfhfugbisr.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_2sr3UUxFtn5ypkr8tCHWpA_Oxr6FMdl
 ```
 
-## The admin page (`/admin`)
+---
 
-The first time you open it, you create a passcode (8+ characters). After that you sign in with it. The session locks after 30 idle minutes.
+## 🧪 Verification Suite
+Run the automated end-to-end test suite to verify all 10 public database tables, auth sign-in, and telemetry streamers:
+```bash
+node scripts/verify_project_flow.cjs
+```
 
-| Tab | What you can do |
-|---|---|
-| General | Name, logo letters, role, links, resume link, page title and search description |
-| Sections | Show or hide sections, rename the menu items, change the order |
-| Hero | Headline, intro, photo, **intro video link**, badge, chips, floating tags |
-| About, Journey, Experience, Projects, Skills, Achievements, Contact | Add, edit, duplicate, reorder and delete every card and list item |
-| Media | Connect your Google Drive folder, upload photos and videos, and fill empty covers from file names. See below. |
-| Themes | Pick a theme, or create and edit your own (colours, fonts, corner roundness, 3D shapes) with a live preview and readability check |
-| Data & security | Download a backup, restore one, reset, change passcode |
+---
 
-How saving works:
-
-1. Changes show on the site straight away in this browser, so you can click **View site** to preview them.
-2. Press **Save** (or Ctrl+S) to keep them. **Discard** goes back to the last saved version.
-3. Leaving with unsaved work asks you first.
-
-### Important: what the passcode does and does not protect
-
-- Your edits are saved **in this browser only** (browser storage) until you connect a database. Other visitors see the content from `src/data/content.js` and the default theme (`DEFAULT_THEME_ID` in `src/data/themes.js`, currently Sky). That is by design for now, and it means nobody can change your live site by visiting `/admin`.
-- The passcode is checked in the browser. It keeps casual visitors out of the screen but is **not real account security**. Anyone technical can bypass a browser-side check.
-- Before you connect a shared database, add real sign-in and server-side write rules. `docs/DATABASE.md` walks through it step by step.
-- To make the **live site** show your edits for everyone before you have a database: **Data & security → Download backup**, then move the values into `src/data/content.js` (and `DEFAULT_THEME_ID` or a copied theme in `src/data/themes.js`) and redeploy. `ANTIGRAVITY_PROMPTS.md` has a prompt that does this for you.
-
-## Photos and videos in Google Drive
-
-The **Media** tab connects the admin to one Drive folder. You can upload files there, and every image or video field has a **Choose from Drive** button. Only the links are stored in your content. One-time setup (about 5 minutes) is in **`docs/DRIVE.md`**; the small script it uses is `apps-script/Code.gs`.
-
-Name Drive files after a card (`ncc.jpg`, `ncc-2.jpg`, `aquasentinel-ai.png`) and **Match files to cards** fills all the empty covers at once.
-
-## Journey and Projects
-
-- **Journey** has 10 categories. Each page lists its entries grouped by year, newest first. An entry with no extra text is a plain row; an entry with text expands. In the admin every entry has a **Year** field.
-- **Projects** are filtered by category (Security, AI, Tools, Web, Mobile) and status (live, in progress, complete).
-- If you saved edits in the admin before this version, your browser still shows your older content. Open **Data & security → Reset content** to see the new Journey and Projects.
-
-## Themes
-
-13 built-in themes: Sky, Professional, Classic, Midnight, Graphite, Forest, Sunset, Ocean, Royal, Paper Mono, Rose, Neon Night and Sand. Built-in themes cannot be edited, but **Customize a copy** makes one you can change freely. Each theme controls colours, the three fonts (any Google Font name), corner roundness, pill or rounded buttons, and the 3D background (on or off, how many shapes, their colours).
-
-Your theme choice is saved in this browser. To change the theme **all visitors** see today, change `DEFAULT_THEME_ID` in `src/data/themes.js` (a custom theme can be copied there from a backup). Once a database is connected, the choice you Save in the admin applies to everyone.
-
-## The hero play button
-
-A small round ▶ button sits in the corner of the photo card. When someone presses it, the video plays **inside the same frame**. When the video ends, or when they press ✕ or Escape, the photo comes back.
-
-Set the video in **Hero → Intro video**. It accepts:
-
-- a file in this project, for example `/videos/intro.webm` or `/videos/intro.mp4`
-- a direct `.mp4` / `.webm` link
-- a YouTube link (returns to the photo when it ends)
-- a Google Drive share link (set sharing to "Anyone with the link"; Drive cannot signal the end, so visitors press ✕)
-
-Leave it empty to hide the button. A short 4 second placeholder (`public/videos/intro.webm`) is included so you can see it work.
-
-## Where files go
-
-| Placeholder | Put your file here (or paste any https:// link in the admin) |
-|---|---|
-| Hero portrait (4:5, about 1200×1500) | `public/images/profile.jpg` |
-| About photo (3:4) | `public/images/about.jpg` |
-| Hero intro video | `public/videos/intro.mp4` (then set the link to `/videos/intro.mp4`) |
-| Resume | `public/resume/Manohar_Resume.pdf` (a dummy PDF is there now) |
-| Journey card cover + gallery photos | `public/images/journey/` |
-| Project cover images (16:10) | `public/images/projects/<project-slug>.jpg` |
-| Achievement reel videos | `public/videos/reel-*.mp4` (short MP4, under 15 MB each) |
-| Reel poster images | `public/images/reels/*.jpg` |
-
-Google Drive image links also work. Paste the normal share link and the site converts it (or use the Media tab). A missing image shows a labelled box, and in `npm run dev` the box prints the exact path it expects.
-
-Other placeholders to replace (in the admin, or in `src/data/content.js`):
-
-- `socials.linkedin` and `contact.email`: values starting with `YOUR_`. The contact form opens the visitor's email app until you set a form endpoint (a free Formspree or Web3Forms `https://` URL).
-- Project links: leave empty to hide a button. Cards with no links show "Links coming soon".
-- Journey cards and project covers are empty until you pick a Drive image or add a file. The page shows a labelled box meanwhile.
-- Every Journey card gets its own page at `/journey/<slug>`.
-
-## Connecting a database later
-
-The site saves through a small **storage adapter** (`src/data/store.js`). It stores only text and image or video links, as one JSON document. Swapping browser storage for a database changes one file and no screens. See `docs/DATABASE.md` for a Supabase setup (table, security rules, keys) and the shape for any other database.
-
-## Where things live
-
-| I want to change… | Edit this |
-|---|---|
-| Starting content (what a new visitor or a reset shows) | `src/data/content.js` |
-| Add or change built-in themes | `src/data/themes.js` |
-| What the admin lets you edit | `src/admin/schemas.js` |
-| 3D scene feel (speed, number of shapes) | `CONFIG` block at the top of `src/components/SceneBackground.jsx` |
-| Page title, description, share preview | `index.html` (and General tab for search description) |
-| How the project runs and updates on Windows | `portfolio.bat` and `CHANGELOG.md` |
-| Google Drive uploader | `apps-script/Code.gs`, `src/admin/drive.js`, `src/admin/MediaLibrary.jsx` |
-
-## Deploy to Vercel
-
-1. Push this folder to GitHub.
-2. In Vercel choose **Add New → Project**, import the repo. Settings are detected automatically (Vite).
-3. `vercel.json` already makes `/admin` and `/journey/...` work when refreshed.
-
-## Good to know
-
-- **Performance:** the admin is a separate file that visitors never download. The 3D canvas is capped at 1.5× pixel ratio, uses fewer shapes on phones, and is skipped if WebGL is unavailable.
-- **Accessibility:** keyboard-friendly menus, visible focus rings, skip links, readable contrast checks in the theme editor, and `prefers-reduced-motion` turns off spinning, tilting and the 3D drift.
-- **Safe links:** links are checked before use, so `javascript:` and similar addresses are ignored. Colours and font names are checked too, so a bad value cannot break the page.
-- **Privacy:** this project contains no email address and no college ID. Add only what you want public. Anything in a link-shared Drive folder can be opened by anyone with the link.
+## 📖 Architecture & Changelog Manual
+For deep architectural details, database schemas, and upgrade instructions, see **[`CHANGELOG.md`](./CHANGELOG.md)**.
