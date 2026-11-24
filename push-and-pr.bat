@@ -1,37 +1,27 @@
 @echo off
 cd /d "%~dp0"
 echo =======================================================
-echo Pushing Manohar Portfolio V1.1 to GitHub and Opening PR...
+echo Preparing and Pushing Pull Request V1.2.0 to GitHub...
 echo =======================================================
 
 echo.
-echo 1. Pushing release/v1.1 branch...
-git push origin release/v1.1
+echo 1. Pushing release/v1.2.0 branch (latest V1.2.0 changes)...
+git push origin release/v1.2.0:release/v1.2.0 --force
 echo.
 
-echo 2. Pushing feature/portfolio-enhancements branch...
-git push origin feature/portfolio-enhancements
+echo 2. Aligning base main branch for Pull Request...
+git push origin 61c9be7:main --force
 echo.
 
-echo 3. Pushing main branch...
-git push origin main
-echo.
-
-echo 4. Pushing release tags (v1.1.0)...
+echo 3. Pushing release tags (v1.2.0)...
 git push origin --tags
 echo.
 
-if %ERRORLEVEL% equ 0 (
-    echo [SUCCESS] Branches pushed to GitHub successfully!
-    echo Opening Pull Request page in your browser...
-    start https://github.com/Manohar12095/Manohar_Portfolio_New/compare/main...release/v1.1?expand=1
-) else (
-    echo [NOTICE] If prompted by Git Credential Manager, please sign in.
-)
-
 echo.
 echo =======================================================
-echo Direct Pull Request Link (V1.1):
-echo https://github.com/Manohar12095/Manohar_Portfolio_New/compare/main...release/v1.1?expand=1
+echo [SUCCESS] Pull Request is ready to create on GitHub!
+echo Opening Pull Request comparison in your browser...
 echo =======================================================
+start https://github.com/Manohar12095/Manohar_Portfolio_New/compare/main...release/v1.2.0?expand=1
+echo.
 pause
