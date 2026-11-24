@@ -313,7 +313,39 @@ function Shell({ onLock }) {
 }
 
 export default function AdminApp() {
-  const [unlocked, setUnlocked] = useState(() => isSessionActive());
+  const [unlocked, setUnlocked] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Verify that an actual active Supabase session exists before granting access
+  useEffect(() => {
+    if (!isSessionActive()) {
+      setUnlocked(false);
+      setCheckingAuth(false);
+      return;
+    }
+
+    const adapter = getAdapter();
+    const supa = adapter?.supabase;
+    if (supa?.auth) {
+      supa.auth.getSession().then(({ data }) => {
+        if (data?.session?.user) {
+          setUnlocked(true);
+        } else {
+          endSession();
+          setUnlocked(false);
+        }
+        setCheckingAuth(false);
+      }).catch(() => {
+        endSession();
+        setUnlocked(false);
+        setCheckingAuth(false);
+      });
+    } else {
+      setUnlocked(false);
+      setCheckingAuth(false);
+    }
+  }, []);
+
   const lock = useCallback(async () => {
     endSession();
     try {
@@ -344,6 +376,10 @@ export default function AdminApp() {
       meta.remove();
     };
   }, [unlocked]);
+
+  if (checkingAuth) {
+    return <div className="adm-loading">Verifying authentication…</div>;
+  }
 
   return (
     <div className="adm" data-adm>
